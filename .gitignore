@@ -1,0 +1,17 @@
+# Data
+data/
+*.csv
+*.json
+*.pkl
+*.h5
+*.pt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+.env
+.venv/
+env/
+venv/
