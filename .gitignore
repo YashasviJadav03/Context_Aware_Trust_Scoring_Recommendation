@@ -6,6 +6,11 @@ data/
 *.h5
 *.pt
 
+# Ignore large datasets
+data/raw/
+data/processed/
+data/*.json
+
 # Python
 __pycache__/
 *.py[cod]
