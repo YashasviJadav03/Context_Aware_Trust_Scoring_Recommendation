@@ -1,0 +1,5 @@
+review_length
+rating
+rating_deviation
+verified
+helpful_ratio
