@@ -9,6 +9,7 @@ spacy
 regex
 textblob
 scikit-learn
+statsmodels
 xgboost
 lightgbm
 transformers
