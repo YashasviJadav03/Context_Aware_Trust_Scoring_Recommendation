@@ -19,7 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from data.preprocess import clean_review_text
-from features.feature_engineering import extract_features
+from features.feature_engineering import extract_features, FEATURE_NAMES
 from models.trust_model import TrustModel
 
 
@@ -30,14 +30,41 @@ class TrustScoringApp:
                  scaler_path="../models/feature_scaler.pkl",
                  features_path="../models/trained/feature_names.txt"):
         """Initialize the app with trained model and scaler."""
-        self.model = joblib.load(model_path)
-        self.scaler = joblib.load(scaler_path)
-        
-        with open(features_path, 'r') as f:
-            self.feature_names = [line.strip() for line in f.readlines()]
-        
-        print("✅ Model loaded successfully")
-        print(f"   Features: {len(self.feature_names)}")
+        try:
+            self.model = joblib.load(model_path)
+            self.scaler = joblib.load(scaler_path)
+            
+            with open(features_path, 'r') as f:
+                self.feature_names = [line.strip() for line in f.readlines()]
+            
+            print("✅ Model loaded successfully")
+            print(f"   Features: {len(self.feature_names)}")
+        except FileNotFoundError as e:
+            print(f"❌ Model files not found: {e}")
+            print("   Please run notebook 07_trust_regression_models.ipynb first")
+            print("   Using dummy model for demonstration...")
+            
+            # Create dummy model for demo
+            from sklearn.ensemble import RandomForestRegressor
+            from sklearn.preprocessing import StandardScaler
+            
+            self.model = RandomForestRegressor(n_estimators=10, random_state=42)
+            self.scaler = StandardScaler()
+            
+            # Use default feature names
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from src.features.feature_engineering import FEATURE_NAMES
+            self.feature_names = FEATURE_NAMES
+            
+            # Fit dummy model on random data
+            X_dummy = np.random.randn(100, len(self.feature_names))
+            y_dummy = np.random.rand(100)
+            
+            self.scaler.fit(X_dummy)
+            X_scaled = self.scaler.transform(X_dummy)
+            self.model.fit(X_scaled, y_dummy)
+            
+            print("✅ Dummy model created for demonstration")
     
     def predict_trust_score(self, review_data):
         """
