@@ -1,4 +1,16 @@
 review_length
+sentiment_score
+sentiment_extreme
+repetition_ratio
+exclamation_count
+user_review_count
+user_review_frequency
+product_review_count
+product_rating_variance
+product_popularity_log
+days_since_first_review
+review_density
+review_time_gap
 rating
 rating_deviation
 verified
