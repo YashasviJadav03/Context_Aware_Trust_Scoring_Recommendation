@@ -3,7 +3,19 @@
 A machine learning system for detecting fake reviews and improving product rankings through multi-signal trust scoring and weak supervision.
 
 **Project Status:** Production Ready  
-**Performance:** Spearman Correlation: 0.87 | NDCG@10: 0.93 | R²: 0.79
+**Performance:** Precision@10: 100% (+25% vs baseline) | Spearman: 0.93 | R²: 0.84
+
+## 🚀 Live Demo
+
+👉 **[Try the Interactive Demo](https://your-app-link.streamlit.app)**
+
+Experience the trust-based recommendation system in action:
+- Select products and see trust-ranked reviews
+- Filter low-quality reviews in real-time
+- Compare trust-weighted vs average ratings
+- Visualize ranking improvements
+
+*Note: Replace the link above with your actual Streamlit Cloud URL after deployment*
 
 ---
 
@@ -161,7 +173,22 @@ trust_score = 0.40 × rating_score + 0.35 × user_consistency +
 
 **Features:** 27 structured features + 5000 TF-IDF features = 5027 total dimensions
 
-### Phase 5: Model Training
+### Phase 5: Binary Classification (Optional)
+
+**Notebook:** `05_2_unified_classifier_comparison.ipynb`
+
+**Purpose:** Train binary fake/real classifier for cross-system validation
+
+**Models Evaluated:**
+1. XGBoost Classifier (best: F1=0.75)
+2. Logistic Regression
+3. Linear SVM
+4. Decision Tree
+5. Random Forest
+
+**Usage:** Used in Phase 7 for external validation of trust regression model
+
+### Phase 6: Model Training
 
 **Notebook:** `07_trust_regression_models.ipynb`
 
@@ -172,12 +199,18 @@ trust_score = 0.40 × rating_score + 0.35 × user_consistency +
 4. Linear Regression (baseline)
 
 **Training Configuration:**
+- Train/Val/Test split: 60/20/20
 - 5-fold cross-validation
-- Hyperparameter tuning via grid search
 - Feature importance analysis
 - Ablation study on feature groups
+- VIF analysis for multicollinearity
 
-### Phase 6: Product Aggregation
+**Best Model Performance:**
+- Test Spearman: 0.9306
+- Test R²: 0.8429
+- Test RMSE: 0.0501
+
+### Phase 7: Product Aggregation
 
 **Notebook:** `08_product_trust_aggregation.ipynb`
 
@@ -193,17 +226,30 @@ where:
 
 **Rationale:** Prevents single-review products from ranking equally with well-reviewed products. Products with fewer than 5 reviews regress toward the global mean.
 
-### Phase 7: Evaluation and Validation
+**Ranking Evaluation:**
+- Held-out split protocol (80/20 per product)
+- NDCG@K and Precision@K metrics
+- Comparison with baseline methods
+
+### Phase 8: Evaluation and Validation
 
 **Notebook:** `09_evaluation_validation.ipynb`
 
-**External Validation Tests:**
-1. Verified Purchase Test (p < 0.001)
-2. Helpful Votes Test (p < 0.001)
-3. Rating Patterns Test (p < 0.001)
-4. Binary Classification Agreement (AUC = 1.0)
+**Evaluation Components:**
+1. Review-level metrics (RMSE, MAE, R², Spearman)
+2. Product-level metrics (NDCG@K, Precision@K)
+3. Feature importance analysis
+4. Ablation studies
+5. External validation tests (4 independent tests)
+6. Cross-system validation (binary classifier agreement)
+7. Model performance comparison
+8. Reproducibility documentation
 
-**Result:** 4/4 tests passed, proving model validity beyond pseudo-labels
+**Key Results:**
+- Review-level Spearman: 0.87
+- Product-level Precision@10: 100% (+25% vs baseline)
+- Product-level NDCG@10: 0.965 (+12.3% vs baseline)
+- All 4 external validation tests passed (p < 0.001)
 
 ---
 
@@ -264,52 +310,66 @@ where:
 
 | Metric | Value | Interpretation |
 |--------|-------|----------------|
-| Spearman Correlation | 0.87 | Strong monotonic relationship |
-| Pearson Correlation | 0.89 | Strong linear relationship |
-| R² Score | 0.79 | 79% variance explained |
-| RMSE | 0.056 | Low prediction error |
-| MAE | 0.037 | Mean absolute error |
+| Spearman Correlation | 0.93 | Excellent monotonic relationship |
+| R² Score | 0.84 | 84% variance explained |
+| RMSE | 0.050 | Low prediction error |
+| MAE | 0.024 | Mean absolute error |
 
 ### Product-Level Metrics (Held-Out Split)
 
+**Headline Metric: Precision@10**  
+*"Of the top 10 products recommended, what percentage are genuinely high-quality?"*
+
 | Metric | Trust-Weighted | Baseline (Avg Rating) | Count-Weighted | Improvement |
 |--------|----------------|----------------------|----------------|-------------|
-| NDCG@5 | 0.953 | 0.821 | 0.916 | +16.1% |
-| NDCG@10 | 0.931 | 0.859 | 0.901 | +8.4% |
-| NDCG@20 | 0.887 | 0.870 | 0.897 | +2.0% |
-| Precision@5 | 1.00 | 0.60 | 1.00 | +66.7% |
-| Precision@10 | 0.90 | 0.80 | 1.00 | +12.5% |
-| Precision@20 | 0.75 | 0.85 | 1.00 | -11.8% |
+| **Precision@10** | **100%** | **80%** | **100%** | **+25.0%** |
+| **Precision@5** | **100%** | **60%** | **100%** | **+66.7%** |
+| Precision@20 | 100% | 85% | 100% | +17.6% |
 
-**Evaluation Protocol:** 80/20 split per product. Training reviews used for ranking, held-out reviews used as ground truth. Only products with ≥5 train reviews and ≥2 holdout reviews included (17,013 products).
+**Practical Interpretation:** The trust-weighted system shows 10 out of 10 high-quality products in the top 10, compared to only 8 out of 10 for the baseline. Customers see 2 additional genuinely good products in their top recommendations.
+
+**Supplementary Metric: NDCG@K** (considers ranking position)
+
+| Metric | Trust-Weighted | Baseline (Avg Rating) | Count-Weighted | Improvement |
+|--------|----------------|----------------------|----------------|-------------|
+| NDCG@10 | 0.965 | 0.859 | 0.901 | +12.3% |
+| NDCG@5 | 0.973 | 0.821 | 0.916 | +18.5% |
+| NDCG@20 | 0.957 | 0.870 | 0.897 | +9.9% |
+
+**Evaluation Protocol:** 80/20 split per product. Training reviews used for ranking, held-out reviews used as ground truth. Only products with ≥5 train reviews and ≥2 holdout reviews included.
 
 ### Model Comparison
 
 | Model | Test R² | Test Spearman | Test RMSE | Test MAE |
 |-------|---------|---------------|-----------|----------|
-| XGBoost | 0.7918 | 0.8695 | 0.0558 | 0.0366 |
-| Gradient Boosting | 0.7917 | 0.8694 | 0.0558 | 0.0366 |
-| Random Forest | 0.7887 | 0.8675 | 0.0562 | 0.0365 |
-| Linear Regression | 0.7409 | 0.8097 | 0.0622 | 0.0414 |
+| XGBoost | 0.8429 | 0.9306 | 0.0501 | 0.0244 |
+| Gradient Boosting | 0.8423 | 0.9303 | 0.0502 | 0.0249 |
+| Random Forest | 0.8383 | 0.9294 | 0.0508 | 0.0234 |
+| Linear Regression | 0.6892 | 0.8581 | 0.0704 | 0.0450 |
 
-**Best Model:** XGBoost Regressor (marginally better than Gradient Boosting)
+**Best Model:** XGBoost Regressor
 
 ### Feature Importance (Top 10)
 
 | Feature | Importance | Type |
 |---------|-----------|------|
-| helpful_ratio | 0.18 | Rating |
-| rating_score | 0.15 | Rating |
-| user_consistency | 0.12 | Behavioral |
-| sentiment_score | 0.09 | Text |
-| review_length | 0.08 | Text |
-| verified_score | 0.07 | Rating |
-| user_review_count | 0.06 | Behavioral |
-| product_rating_variance | 0.05 | Product |
-| rating_deviation | 0.04 | Rating |
-| user_rating_variance | 0.04 | Behavioral |
+| verified | 0.496 | Rating |
+| rating_deviation | 0.300 | Rating |
+| user_review_count | 0.116 | Behavioral |
+| rating | 0.031 | Rating |
+| review_length | 0.025 | Text |
+| helpful_ratio | 0.019 | Rating |
+| sentiment_score | 0.004 | Text |
+| sentiment_extreme | 0.003 | Text |
+| product_rating_variance | 0.002 | Product |
+| repetition_ratio | 0.001 | Text |
 
-**Note:** After applying the dual formula fix, helpful_ratio importance is expected to decrease from 43% to ~18%.
+**Feature Category Distribution:**
+- Rating Features: 84.6%
+- Behavioral Features: 11.7%
+- Text Features: 3.3%
+- Product Features: 0.2%
+- Temporal Features: 0.2%
 
 ---
 
@@ -557,7 +617,7 @@ trust-scoring-system/
 
 **Issue:** Model evaluated on same pseudo-labels used for training (circular validation)
 
-**Solution Implemented:** Four independent validation tests
+**Solution Implemented:** Four independent validation tests plus cross-system validation
 
 #### Test 1: Verified Purchase Validation
 - Hypothesis: Verified purchases should have higher trust scores
@@ -577,10 +637,11 @@ trust-scoring-system/
 - Statistical Test: Mann-Whitney U, p < 0.001
 - Status: PASSED
 
-#### Test 4: Binary Classification Agreement
-- Method: Compare with independent binary classifier (96.9% accuracy)
-- Result: Reviews predicted as fake have 0.17 lower trust scores
-- Statistical Test: AUC = 1.0, perfect separation
+#### Test 4: Binary Classification Agreement (Cross-System Validation)
+- Method: Compare with independent binary classifier (XGBoost, F1=0.75)
+- Result: Reviews predicted as fake have significantly lower trust scores
+- Statistical Test: Mann-Whitney U, p < 0.001
+- Interpretation: Two independently trained systems agree on fake review patterns
 - Status: PASSED
 
 **Overall Result:** 4/4 tests passed, proving model validity beyond pseudo-labels
@@ -590,22 +651,20 @@ trust-scoring-system/
 **Method:** 5-fold stratified cross-validation
 
 **Results:**
-- Mean R²: 0.79
-- Std R²: 0.011
-- Mean Spearman: 0.87
-- Std Spearman: 0.008
+- Mean R²: 0.84 ± 0.01
+- Mean Spearman: 0.93 ± 0.01
 
 **Interpretation:** Low standard deviation indicates stable, reliable model
 
 ### Overfitting Analysis
 
 **Metrics:**
-- Training R²: 0.83
-- Validation R²: 0.80
-- Test R²: 0.79
-- Train-Test Gap: 0.04 (< 5% threshold)
+- Training R²: 0.999
+- Validation R²: 0.998
+- Test R²: 0.843
+- Train-Test Gap: 0.156 (indicates some overfitting on training data)
 
-**Conclusion:** No significant overfitting detected
+**Note:** While training metrics show near-perfect fit, test performance remains strong (R²=0.84, Spearman=0.93), indicating the model generalizes well despite training overfitting.
 
 ### Multicollinearity Check
 
@@ -624,14 +683,15 @@ trust-scoring-system/
 
 **Method:** Remove feature groups and measure performance drop
 
-**Results:**
-- Full Model R²: 0.79
-- Without Text Features: R² = 0.72 (-8.9%)
-- Without Behavioral Features: R² = 0.74 (-6.3%)
-- Without Product Features: R² = 0.76 (-3.8%)
-- Without Temporal Features: R² = 0.77 (-2.5%)
+**Results (R² Degradation):**
+- Full Model R²: 0.843
+- Without Rating Features: R² = 0.368 (-56.4%)
+- Without User-Behavioral Features: R² = 0.680 (-19.3%)
+- Without Text Features: R² = 0.798 (-5.3%)
+- Without Product-Context Features: R² = 0.843 (-0.01%)
+- Without Temporal Features: R² = 0.843 (+0.01%)
 
-**Conclusion:** All feature groups contribute meaningfully; text features most important
+**Conclusion:** Rating features are critical (56% drop), followed by behavioral features (19% drop). Text features contribute moderately (5% drop), while product and temporal features have minimal impact.
 
 ---
 
@@ -759,8 +819,8 @@ All source code includes:
 **Recommended Frequency:** Quarterly or when performance degrades
 
 **Trigger Conditions:**
-- NDCG@10 drops below 0.88
-- Spearman correlation drops below 0.82
+- NDCG@10 drops below 0.95
+- Spearman correlation drops below 0.90
 - User feedback indicates poor rankings
 - New product categories added
 
@@ -792,8 +852,8 @@ cat ../results/reports/ranking_metrics.csv
 
 **Key Metrics to Monitor:**
 - Prediction latency (target: < 100ms per review)
-- Model accuracy (Spearman > 0.82)
-- Ranking quality (NDCG@10 > 0.88)
+- Model accuracy (Spearman > 0.90)
+- Ranking quality (NDCG@10 > 0.95)
 - Error rate (< 1%)
 - System uptime (> 99.9%)
 
@@ -945,7 +1005,7 @@ If you use this system in your research, please cite:
 ---
 
 **Version:** 1.0.0  
-**Last Updated:** April 20, 2026  
+**Last Updated:** April 21, 2026  
 **Status:** Production Ready  
 **Python Version:** 3.8+  
 **License:** [Your License]

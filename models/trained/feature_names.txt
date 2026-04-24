@@ -3,6 +3,7 @@ sentiment_score
 sentiment_extreme
 repetition_ratio
 exclamation_count
+question_count
 user_review_count
 user_review_frequency
 product_review_count

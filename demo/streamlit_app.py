@@ -1,6 +1,6 @@
 """
 Trust-Based Product Recommendation System - Streamlit Demo
-Deployment Version with Google Drive Integration
+Phase 2: Core UI Implementation
 """
 
 import streamlit as st
@@ -8,38 +8,15 @@ import pandas as pd
 import numpy as np
 
 # ============================================================================
-# DATA LOADING - GOOGLE DRIVE VERSION
+# DATA LOADING
 # ============================================================================
 
 @st.cache_data
 def load_data():
-    """Load review and product data from Google Drive with caching"""
-    
-    # TODO: Replace these with your actual Google Drive file IDs
-    # After uploading to Google Drive, get the file ID from the shareable link
-    # Example: https://drive.google.com/file/d/1ABCxyz123/view -> File ID = 1ABCxyz123
-    
-    REVIEWS_FILE_ID = "YOUR_REVIEWS_FILE_ID_HERE"
-    PRODUCTS_FILE_ID = "YOUR_PRODUCTS_FILE_ID_HERE"
-    
-    # Construct Google Drive direct download URLs
-    reviews_url = f"https://drive.google.com/uc?id={REVIEWS_FILE_ID}"
-    products_url = f"https://drive.google.com/uc?id={PRODUCTS_FILE_ID}"
-    
-    try:
-        # Load data from Google Drive
-        with st.spinner("📥 Loading data from Google Drive... (this may take 10-20 seconds)"):
-            reviews = pd.read_csv(reviews_url)
-            products = pd.read_csv(products_url)
-        st.success(f"✅ Data loaded: {len(reviews):,} reviews, {len(products):,} products")
-        return reviews, products
-    except Exception as e:
-        st.error(f"❌ Error loading data: {e}")
-        st.error("Please check that:")
-        st.error("1. File IDs are correct")
-        st.error("2. Files are shared with 'Anyone with the link'")
-        st.error("3. Files are in CSV format")
-        st.stop()
+    """Load review and product data with caching"""
+    reviews = pd.read_csv("../data/processed/reviews_with_predicted_trust.csv")
+    products = pd.read_csv("../data/processed/product_trust_scores.csv")
+    return reviews, products
 
 # Load data
 reviews, products = load_data()
@@ -108,9 +85,6 @@ filtered_reviews = reviews[reviews['product_id'] == product_id].copy()
 # Sort by trust score (descending)
 filtered_reviews = filtered_reviews.sort_values(by="trust_score", ascending=False)
 
-# PHASE 7: Flag low trust reviews
-filtered_reviews['low_trust_flag'] = filtered_reviews['trust_score'] < 0.3
-
 # Display statistics
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -122,25 +96,6 @@ with col3:
 with col4:
     verified_pct = (filtered_reviews['verified'].sum() / len(filtered_reviews) * 100)
     st.metric("Verified %", f"{verified_pct:.1f}%")
-
-# PHASE 7: Add visualization
-st.subheader("Trust Score Distribution")
-col1, col2 = st.columns(2)
-
-with col1:
-    # Trust score histogram
-    trust_hist = filtered_reviews['trust_score'].value_counts(bins=10, sort=False).sort_index()
-    st.bar_chart(trust_hist)
-    st.caption("Distribution of trust scores")
-
-with col2:
-    # Rating vs Trust comparison
-    comparison_data = pd.DataFrame({
-        'Rating': [filtered_reviews['rating'].mean()],
-        'Trust Score': [filtered_reviews['trust_score'].mean()]
-    })
-    st.bar_chart(comparison_data.T)
-    st.caption("Average Rating vs Trust Score")
 
 # Trust score filter
 st.subheader("Filter by Trust Score")
@@ -155,22 +110,13 @@ min_trust = st.slider(
 
 filtered_reviews_display = filtered_reviews[filtered_reviews['trust_score'] >= min_trust]
 
-# Show low trust warning
-low_trust_count = (filtered_reviews['trust_score'] < 0.3).sum()
-if low_trust_count > 0:
-    st.warning(f"⚠️ {low_trust_count} low-trust reviews detected (trust score < 0.3)")
-
 st.write(f"Showing **{len(filtered_reviews_display)}** reviews (filtered from {len(filtered_reviews)})")
 
-# Display reviews table with highlighting
-display_df = filtered_reviews_display[['review_text', 'rating', 'trust_score', 'verified', 'low_trust_flag']].copy()
-display_df['review_text'] = display_df['review_text'].str[:200] + '...'
+# Display reviews table
+display_df = filtered_reviews_display[['review_text', 'rating', 'trust_score', 'verified']].copy()
+display_df['review_text'] = display_df['review_text'].str[:200] + '...'  # Truncate for display
 display_df['trust_score'] = display_df['trust_score'].round(4)
-
-# PHASE 7: Add flag column for highlighting
-display_df['Status'] = display_df['low_trust_flag'].apply(lambda x: '🔴 Low Trust' if x else '🟢 Trusted')
-display_df = display_df.drop('low_trust_flag', axis=1)
-display_df.columns = ['Review Text', 'Rating', 'Trust Score', 'Verified', 'Status']
+display_df.columns = ['Review Text', 'Rating', 'Trust Score', 'Verified']
 
 st.dataframe(
     display_df,
@@ -194,9 +140,6 @@ if len(prod) > 0:
     trust_score = prod['score_trust_weighted'].values[0]
     review_count = prod['review_count'].values[0]
     
-    # PHASE 7: Calculate and show difference prominently
-    difference = trust_score - avg_rating
-    
     st.subheader("Score Comparison")
     
     col1, col2, col3 = st.columns(3)
@@ -212,26 +155,17 @@ if len(prod) > 0:
         st.metric(
             "🧠 Trust-Weighted Score",
             f"{trust_score:.2f}",
-            delta=f"{difference:+.2f}",
             help="Rating weighted by review trust scores"
         )
     
     with col3:
+        difference = trust_score - avg_rating
         st.metric(
             "📊 Difference",
             f"{difference:+.2f}",
-            delta=f"{abs(difference):.2f}",
-            delta_color="normal" if difference > 0 else "inverse",
+            delta=f"{difference:+.2f}",
             help="Trust score - Average rating"
         )
-    
-    # PHASE 7: Visual comparison chart
-    st.subheader("Visual Comparison")
-    comparison_chart = pd.DataFrame({
-        'Average Rating': [avg_rating],
-        'Trust-Weighted Score': [trust_score]
-    })
-    st.bar_chart(comparison_chart.T)
     
     # Explanation
     if difference > 0:
@@ -336,6 +270,5 @@ st.markdown("""
 ✅ Product ranking improves using trust-weighted aggregation  
 ✅ Low-quality reviews can be filtered out  
 
-**System Status:** Ready for Production  
-**Data Source:** Google Drive (cloud-hosted)
+**System Status:** Ready for Production
 """)
