@@ -19,8 +19,8 @@ def load_data():
     # After uploading to Google Drive, get the file ID from the shareable link
     # Example: https://drive.google.com/file/d/1ABCxyz123/view -> File ID = 1ABCxyz123
     
-    REVIEWS_FILE_ID = "1vBSpp1vW_W27STVnnwHCU2j5gztC8fWG"
-    PRODUCTS_FILE_ID = "1gC9cEHV8CXMQJdb1z7ws1vME2sD7hpoX"
+    REVIEWS_FILE_ID = "YOUR_REVIEWS_FILE_ID_HERE"
+    PRODUCTS_FILE_ID = "YOUR_PRODUCTS_FILE_ID_HERE"
     
     # Option to use local files for testing
     USE_LOCAL_FILES = REVIEWS_FILE_ID == "YOUR_REVIEWS_FILE_ID_HERE"
