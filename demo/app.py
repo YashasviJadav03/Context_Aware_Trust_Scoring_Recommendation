@@ -19,8 +19,8 @@ def load_data():
     # After uploading to Google Drive, get the file ID from the shareable link
     # Example: https://drive.google.com/file/d/1ABCxyz123/view -> File ID = 1ABCxyz123
     
-    REVIEWS_FILE_ID = "1vBSpp1vW_W27STVnnwHCU2j5gztC8fWG"
-    PRODUCTS_FILE_ID = "1gC9cEHV8CXMQJdb1z7ws1vME2sD7hpoX"
+    REVIEWS_FILE_ID = "1brikM4-iQTUmsSZtqkLqFMFHWxdZp9cd"
+    PRODUCTS_FILE_ID = "1bnwZBcnnzfGDRYpPg5Vr-wFYfsk6T5PG"
     
     # Option to use local files for testing
     USE_LOCAL_FILES = REVIEWS_FILE_ID == "YOUR_REVIEWS_FILE_ID_HERE"
@@ -28,50 +28,70 @@ def load_data():
     if USE_LOCAL_FILES:
         st.warning("⚠️ Using local files (File IDs not updated)")
         try:
-            reviews = pd.read_csv("../data/processed/reviews_with_predicted_trust.csv")
+            reviews = pd.read_csv("../data/processed/reviews_sample.csv")
             products = pd.read_csv("../data/processed/product_trust_scores.csv")
-            st.success(f"✅ Local data loaded: {len(reviews):,} reviews, {len(products):,} products")
+            st.success(f"✅ Local sample data loaded: {len(reviews):,} reviews, {len(products):,} products")
         except FileNotFoundError:
-            st.error("❌ Local CSV files not found. Please update File IDs to use Google Drive.")
-            st.stop()
+            # Try demo folder sample files
+            try:
+                reviews = pd.read_csv("reviews_sample.csv")
+                products = pd.read_csv("products_sample.csv")
+                st.success(f"✅ Demo sample data loaded: {len(reviews):,} reviews, {len(products):,} products")
+            except FileNotFoundError:
+                st.error("❌ Sample CSV files not found. Please update File IDs to use Google Drive.")
+                st.stop()
     else:
         # Construct Google Drive direct download URLs
-        reviews_url = f"https://drive.google.com/uc?id={REVIEWS_FILE_ID}"
-        products_url = f"https://drive.google.com/uc?id={PRODUCTS_FILE_ID}"
+        # For large files, we need to handle Google's virus scan warning
+        reviews_url = f"https://drive.google.com/uc?export=download&id={REVIEWS_FILE_ID}&confirm=t"
+        products_url = f"https://drive.google.com/uc?export=download&id={PRODUCTS_FILE_ID}&confirm=t"
         
         try:
             # Load data from Google Drive with proper CSV parsing
-            with st.spinner("📥 Loading data from Google Drive... (this may take 10-20 seconds)"):
-                # Try multiple CSV parsing strategies
-                try:
-                    # Strategy 1: Standard parsing
-                    reviews = pd.read_csv(reviews_url)
-                    products = pd.read_csv(products_url)
-                except:
-                    # Strategy 2: Robust parsing
-                    reviews = pd.read_csv(
-                        reviews_url,
-                        quoting=1,  # QUOTE_ALL
-                        escapechar='\\',
-                        encoding='utf-8',
-                        on_bad_lines='skip'
-                    )
-                    products = pd.read_csv(
-                        products_url,
-                        quoting=1,  # QUOTE_ALL
-                        escapechar='\\',
-                        encoding='utf-8',
-                        on_bad_lines='skip'
-                    )
+            with st.spinner("📥 Loading data from Google Drive... (this may take 30-60 seconds for large files)"):
+                
+                # Try different URL formats for large files
+                def load_large_csv_from_gdrive(file_id, file_name):
+                    urls_to_try = [
+                        f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t",
+                        f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t",
+                        f"https://drive.google.com/uc?id={file_id}&export=download"
+                    ]
+                    
+                    for i, url in enumerate(urls_to_try):
+                        try:
+                            st.info(f"Trying URL format {i+1}/3 for {file_name}...")
+                            df = pd.read_csv(url)
+                            if len(df) > 0 and len(df.columns) > 3:  # Basic validation
+                                st.success(f"✅ Successfully loaded {file_name} using URL format {i+1}")
+                                return df
+                        except Exception as e:
+                            st.warning(f"URL format {i+1} failed: {str(e)[:100]}...")
+                            continue
+                    
+                    raise Exception(f"All URL formats failed for {file_name}")
+                
+                # Load reviews with multiple URL attempts
+                reviews = load_large_csv_from_gdrive(REVIEWS_FILE_ID, "reviews")
+                
+                # Load products with multiple URL attempts  
+                products = load_large_csv_from_gdrive(PRODUCTS_FILE_ID, "products")
                 
             st.success(f"✅ Data loaded from Google Drive: {len(reviews):,} reviews, {len(products):,} products")
         except Exception as e:
             st.error(f"❌ Error loading data from Google Drive: {e}")
-            st.error("Please check that:")
-            st.error("1. File IDs are correct")
-            st.error("2. Files are shared with 'Anyone with the link'")
-            st.error("3. Files are in CSV format")
-            st.error("4. Try re-uploading CSV files to Google Drive")
+            st.error("**Possible solutions:**")
+            st.error("1. Files are too large (>100MB) - Google Drive blocks direct CSV loading")
+            st.error("2. Try using smaller sample files for demo")
+            st.error("3. Use a different hosting service (Dropbox, AWS S3, etc.)")
+            st.error("4. File IDs are incorrect or files aren't shared properly")
+            
+            # Show debug info
+            st.error("**Debug info:**")
+            st.code(f"Reviews File ID: {REVIEWS_FILE_ID}")
+            st.code(f"Products File ID: {PRODUCTS_FILE_ID}")
+            st.code(f"Reviews URL: {reviews_url}")
+            st.code(f"Products URL: {products_url}")
             st.stop()
     
     # Validate and fix column names
