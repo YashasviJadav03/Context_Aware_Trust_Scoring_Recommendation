@@ -48,7 +48,7 @@ def load_data():
         
         try:
             # Load data from Google Drive with proper CSV parsing
-            with st.spinner("📥 Loading data from Google Drive... (this may take 30-60 seconds for large files)"):
+            with st.spinner("📥 Loading data..."):
                 
                 # Try different URL formats for large files
                 def load_large_csv_from_gdrive(file_id, file_name):
@@ -60,21 +60,16 @@ def load_data():
                     
                     for i, url in enumerate(urls_to_try):
                         try:
-                            st.info(f"Trying URL format {i+1}/3 for {file_name}...")
                             df = pd.read_csv(url)
                             if len(df) > 0 and len(df.columns) > 3:  # Basic validation
-                                st.success(f"✅ Successfully loaded {file_name} using URL format {i+1}")
                                 return df
                         except Exception as e:
-                            st.warning(f"URL format {i+1} failed: {str(e)[:100]}...")
                             continue
                     
-                    raise Exception(f"All URL formats failed for {file_name}")
+                    raise Exception(f"Failed to load {file_name} from Google Drive")
                 
-                # Load reviews with multiple URL attempts
+                # Load reviews and products
                 reviews = load_large_csv_from_gdrive(REVIEWS_FILE_ID, "reviews")
-                
-                # Load products with multiple URL attempts  
                 products = load_large_csv_from_gdrive(PRODUCTS_FILE_ID, "products")
                 
             st.success(f"✅ Data loaded from Google Drive: {len(reviews):,} reviews, {len(products):,} products")
@@ -94,10 +89,7 @@ def load_data():
             st.code(f"Products URL: {products_url}")
             st.stop()
     
-    # Validate and fix column names
-    st.info(f"📊 Raw data loaded - Reviews: {len(reviews.columns)} cols, Products: {len(products.columns)} cols")
-    
-    # Handle potential column name variations
+    # Validate and fix column names (silent processing)
     review_col_mapping = {
         'user_id': ['user_id', 'userId', 'reviewer_id'],
         'product_id': ['product_id', 'productId', 'asin', 'product'],
@@ -129,13 +121,6 @@ def load_data():
     reviews = standardize_columns(reviews, review_col_mapping)
     products = standardize_columns(products, product_col_mapping)
     
-    # Debug: Show actual columns after standardization
-    with st.expander("🔍 Debug: Column Information"):
-        st.write("**Reviews columns:**", list(reviews.columns))
-        st.write("**Products columns:**", list(products.columns))
-        st.write("**Reviews shape:**", reviews.shape)
-        st.write("**Products shape:**", products.shape)
-    
     # Check if required columns exist
     required_review_cols = ['product_id', 'rating', 'review_text', 'trust_score']
     required_product_cols = ['product_id', 'avg_rating', 'score_trust_weighted']
@@ -145,22 +130,18 @@ def load_data():
     
     if missing_review_cols:
         st.error(f"❌ Missing review columns: {missing_review_cols}")
-        st.error("Available columns: " + str(list(reviews.columns)))
         st.stop()
         
     if missing_product_cols:
         st.error(f"❌ Missing product columns: {missing_product_cols}")
-        st.error("Available columns: " + str(list(products.columns)))
         st.stop()
     
     # Add missing columns with defaults if needed
     if 'verified' not in reviews.columns:
-        reviews['verified'] = True  # Default to verified
-        st.warning("⚠️ 'verified' column missing, defaulting to True")
+        reviews['verified'] = True
     
     if 'helpful_votes' not in reviews.columns:
-        reviews['helpful_votes'] = 0  # Default to 0 helpful votes
-        st.warning("⚠️ 'helpful_votes' column missing, defaulting to 0")
+        reviews['helpful_votes'] = 0
     
     return reviews, products
 
