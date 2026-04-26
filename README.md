@@ -5,9 +5,11 @@ A machine learning system for detecting fake reviews and improving product ranki
 **Project Status:** Production Ready  
 **Performance:** Precision@10: 100% (+25% vs baseline) | Spearman: 0.93 | R²: 0.84
 
+🌐 **[🚀 LIVE DEMO - Try It Now!](https://context-aware-trust-scoring-recommendation.streamlit.app)** 🌐
+
 ## 🚀 Live Demo
 
-👉 **[Try the Interactive Demo](https://your-app-link.streamlit.app)**
+👉 **[Try the Interactive Demo](https://context-aware-trust-scoring-recommendation.streamlit.app)**
 
 Experience the trust-based recommendation system in action:
 - Select products and see trust-ranked reviews
@@ -15,7 +17,7 @@ Experience the trust-based recommendation system in action:
 - Compare trust-weighted vs average ratings
 - Visualize ranking improvements
 
-*Note: Replace the link above with your actual Streamlit Cloud URL after deployment*
+*Live demo hosted on Streamlit Cloud with interactive features and real-time data filtering*
 
 ---
 
