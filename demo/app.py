@@ -171,6 +171,62 @@ Low-quality reviews are identified and can be filtered out.
 st.divider()
 
 # ============================================================================
+# PRODUCT SEARCH SIMULATION
+# ============================================================================
+
+st.header("🔍 Product Search Simulation")
+search_query = st.text_input("Search for products:", placeholder="e.g., 'high rated fashion items'")
+
+if search_query:
+    # Filter products by trust score and show top results
+    top_products = products.nlargest(10, 'score_trust_weighted')
+    st.subheader("🏆 Top Recommended Products (Trust-Based)")
+    
+    for idx, (_, product) in enumerate(top_products.iterrows(), 1):
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            st.write(f"**#{idx}**")
+        with col2:
+            st.write(f"Product {product['product_id']}")
+            st.write(f"Trust Score: {product['score_trust_weighted']:.2f}")
+        with col3:
+            if st.button(f"Analyze", key=f"analyze_{idx}"):
+                # Store selected product for analysis
+                st.session_state.selected_product = product['product_id']
+                st.success(f"Selected Product {product['product_id']} for analysis!")
+
+# ============================================================================
+# TRUST VS RATING COMPARISON
+# ============================================================================
+
+st.header("⚖️ Trust vs Rating Comparison")
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("🔴 Traditional Ranking (Rating Only)")
+    rating_ranked = products.nlargest(5, 'avg_rating')[['product_id', 'avg_rating']].copy()
+    rating_ranked['avg_rating'] = rating_ranked['avg_rating'].round(2)
+    rating_ranked.columns = ['Product ID', 'Avg Rating']
+    rating_ranked.insert(0, 'Rank', range(1, 6))
+    st.dataframe(rating_ranked, hide_index=True)
+
+with col2:
+    st.subheader("🟢 Trust-Based Ranking (Our System)")
+    trust_ranked = products.nlargest(5, 'score_trust_weighted')[['product_id', 'score_trust_weighted']].copy()
+    trust_ranked['score_trust_weighted'] = trust_ranked['score_trust_weighted'].round(2)
+    trust_ranked.columns = ['Product ID', 'Trust Score']
+    trust_ranked.insert(0, 'Rank', range(1, 6))
+    st.dataframe(trust_ranked, hide_index=True)
+
+# Show the difference
+rating_ids = set(products.nlargest(5, 'avg_rating')['product_id'])
+trust_ids = set(products.nlargest(5, 'score_trust_weighted')['product_id'])
+common_products = rating_ids & trust_ids
+st.info(f"Products in both top 5: {len(common_products)}/5 - Shows ranking difference impact!")
+
+st.divider()
+
+# ============================================================================
 # SECTION 1 — PRODUCT SELECTION
 # ============================================================================
 
@@ -200,10 +256,20 @@ if not product_options:
     st.error("❌ No products found with sufficient reviews")
     st.stop()
 
+# Check if a product was selected from search
+default_index = 0
+if 'selected_product' in st.session_state:
+    selected_pid = str(st.session_state.selected_product)
+    for i, option in enumerate(product_options):
+        if option.startswith(selected_pid):
+            default_index = i
+            break
+
 selected_option = st.selectbox(
     "Select a product to analyze:",
     product_options,
-    help="Products with at least 5 reviews are shown"
+    index=default_index,
+    help="Products with at least 5 reviews are shown. Use search above to find specific products."
 )
 
 # Extract product_id from selection
@@ -317,6 +383,24 @@ if len(prod) > 0:
     avg_rating = prod['avg_rating'].values[0]
     trust_score = prod['score_trust_weighted'].values[0]
     review_count = prod['review_count'].values[0] if 'review_count' in prod.columns else len(filtered_reviews)
+    
+    # ============================================================================
+    # PRODUCT INFORMATION SECTION
+    # ============================================================================
+    
+    st.subheader("📦 Product Information")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write(f"**Product ID:** {product_id}")
+        st.write(f"**Category:** Fashion Item")
+        st.write(f"**Total Reviews:** {len(filtered_reviews)}")
+    with col2:
+        st.write(f"**Average Rating:** {avg_rating:.2f}/5.0")
+        st.write(f"**Trust Score:** {trust_score:.2f}/5.0")
+        recommendation = "✅ Recommended" if trust_score > avg_rating else "⚠️ Caution"
+        st.write(f"**Recommendation:** {recommendation}")
+    
+    st.divider()
     
     # Calculate and show difference prominently
     difference = trust_score - avg_rating
