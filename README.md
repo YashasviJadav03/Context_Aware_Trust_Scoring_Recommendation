@@ -743,46 +743,113 @@ During development and code review, six critical issues were identified and reso
 
 ## Deployment
 
-### Production Deployment
+### Live Demo (Production)
 
-See `DEPLOYMENT_GUIDE.md` for comprehensive deployment instructions including:
-- Docker containerization
-- Cloud deployment (AWS, GCP, Azure)
-- Load balancing and scaling
-- Monitoring and logging
-- Performance optimization
-- Security considerations
+🌐 **[Interactive Demo on Streamlit Cloud](https://context-aware-trust-scoring-recommendation.streamlit.app)** 🌐
 
-### Quick Deployment
+**Features:**
+- Real product search with 3 search modes (Smart, Exact, High Trust)
+- Dynamic product analysis (search → analyze → instant updates)
+- Trust score distribution visualization
+- Side-by-side ranking comparison (trust-based vs rating-based)
+- Interactive review filtering
+- 10,000 sample reviews, 7,503 products
+
+**Technical Stack:**
+- **Platform:** Streamlit Cloud
+- **Data Hosting:** Google Drive (cloud-hosted CSV files)
+- **Dataset:** Amazon Fashion reviews (sample)
+- **Performance:** 2-3s first load, instant subsequent loads (cached)
+
+### Local Deployment
+
+#### Quick Start
+```bash
+# Navigate to demo folder
+cd demo
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run Streamlit app
+streamlit run app.py
+```
+
+The app will open at `http://localhost:8501`
+
+#### Data Configuration
+
+**Option 1: Google Drive (Recommended for Production)**
+1. Upload CSV files to Google Drive
+2. Share files with "Anyone with the link"
+3. Update file IDs in `demo/app.py`:
+```python
+REVIEWS_FILE_ID = "your_reviews_file_id"
+PRODUCTS_FILE_ID = "your_products_file_id"
+```
+
+**Option 2: Local Files (Development)**
+- Place `reviews_sample.csv` and `products_sample.csv` in `demo/` folder
+- App automatically uses local files if Google Drive IDs not configured
+
+### Docker Deployment
 
 ```bash
 # Build Docker image
 docker build -t trust-scoring-system .
 
 # Run container
-docker run -p 5000:5000 trust-scoring-system
+docker run -p 8501:8501 trust-scoring-system
 
-# Test endpoint
-curl http://localhost:5000/health
+# Access app
+open http://localhost:8501
 ```
+
+### Streamlit Cloud Deployment
+
+1. **Push to GitHub:**
+```bash
+git add .
+git commit -m "Deploy to Streamlit Cloud"
+git push origin main
+```
+
+2. **Deploy on Streamlit Cloud:**
+   - Go to https://share.streamlit.io
+   - Click "New app"
+   - Select repository and branch
+   - Set main file path: `demo/app.py`
+   - Click "Deploy"
+
+3. **Configuration:**
+   - Python version: 3.9+
+   - Requirements file: `demo/requirements.txt`
+   - Secrets: Add Google Drive file IDs if needed
 
 ### Performance Considerations
 
-**Throughput:**
+**Demo App Performance:**
+- First load: 2-3 seconds (downloads data from Google Drive)
+- Subsequent loads: Instant (cached)
+- Search: Real-time filtering (<100ms)
+- Analysis updates: Instant (session state)
+
+**Production API Performance:**
 - Single review scoring: ~50ms
 - Batch processing (1000 reviews): ~5 seconds
 - Product aggregation (10,000 products): ~2 seconds
 
 **Resource Requirements:**
-- CPU: 2 cores minimum, 4 cores recommended
-- RAM: 4GB minimum, 8GB recommended
-- Storage: 5GB for models and data
+- **Demo App:** 512MB RAM, 1 CPU core
+- **Production API:** 4GB RAM, 2-4 CPU cores
+- **Storage:** 5GB for models and data
 
 **Optimization Tips:**
 - Use batch processing for large datasets
 - Cache TF-IDF vectorizer and scaler
 - Implement request queuing for high traffic
-- Consider GPU acceleration for large-scale deployments
+- Use Google Drive or S3 for large data files (>100MB)
+- Enable Streamlit caching with `@st.cache_data`
 
 ---
 
