@@ -870,6 +870,30 @@ st.markdown("""
 The system uses the trained model to score new reviews without retraining.
 """)
 
+# Product selection for the new review
+st.subheader("🎯 Select Product")
+col_prod1, col_prod2 = st.columns([2, 1])
+
+with col_prod1:
+    # Get list of products for selection
+    product_list = products['product_id'].unique().tolist()[:100]  # Top 100 products
+    
+    selected_product_for_review = st.selectbox(
+        "Product ID:",
+        options=product_list,
+        help="Select the product this review is for"
+    )
+
+with col_prod2:
+    # Show product info
+    if selected_product_for_review:
+        prod_info = products[products['product_id'] == selected_product_for_review]
+        if len(prod_info) > 0:
+            st.metric("Current Trust Score", f"{prod_info['score_trust_weighted'].iloc[0]:.2f}")
+            st.metric("Total Reviews", int(prod_info['review_count'].iloc[0]) if 'review_count' in prod_info.columns else "N/A")
+
+st.divider()
+
 # Create two columns for input
 col1, col2 = st.columns([2, 1])
 
@@ -925,6 +949,13 @@ with col2:
             value=10,
             help="Total reviews for this product"
         )
+
+# Add option to update dataset
+update_dataset = st.checkbox(
+    "📊 Add this review to dataset (updates product ranking)",
+    value=True,
+    help="If checked, the new review will be added to the dataset and product rankings will be updated"
+)
 
 # Predict button
 if st.button("🔮 Predict Trust Score", type="primary", use_container_width=True):
@@ -1066,6 +1097,159 @@ if st.button("🔮 Predict Trust Score", type="primary", use_container_width=Tru
             
             This shows how trust scoring prevents fake reviews from inflating product rankings!
             """)
+            
+            # ============================================================================
+            # DATASET UPDATE - ADD NEW REVIEW DYNAMICALLY
+            # ============================================================================
+            
+            if update_dataset:
+                st.divider()
+                st.subheader("📊 Dataset Update")
+                
+                # Create new review row
+                new_review_row = {
+                    'user_id': f'NEW_USER_{len(reviews)}',  # Generate unique user ID
+                    'product_id': selected_product_for_review,
+                    'rating': new_rating,
+                    'review_text': new_review_text,
+                    'verified': new_verified,
+                    'helpful_votes': new_helpful_votes,
+                    'trust_score': predicted_trust,
+                    'predicted_trust_score': predicted_trust
+                }
+                
+                # Add to reviews dataframe
+                new_review_df = pd.DataFrame([new_review_row])
+                reviews_updated = pd.concat([reviews, new_review_df], ignore_index=True)
+                
+                # Update product statistics
+                product_reviews = reviews_updated[reviews_updated['product_id'] == selected_product_for_review]
+                
+                # Calculate new product metrics
+                new_avg_rating = product_reviews['rating'].mean()
+                new_trust_weighted_score = (product_reviews['rating'] * product_reviews['trust_score']).sum() / product_reviews['trust_score'].sum()
+                new_review_count = len(product_reviews)
+                
+                # Get old product metrics
+                old_product = products[products['product_id'] == selected_product_for_review]
+                if len(old_product) > 0:
+                    old_avg_rating = old_product['avg_rating'].iloc[0]
+                    old_trust_score = old_product['score_trust_weighted'].iloc[0]
+                    old_review_count = int(old_product['review_count'].iloc[0]) if 'review_count' in old_product.columns else len(reviews[reviews['product_id'] == selected_product_for_review])
+                else:
+                    old_avg_rating = 0
+                    old_trust_score = 0
+                    old_review_count = 0
+                
+                # Display update summary
+                st.success("✅ Review added to dataset successfully!")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric(
+                        "📊 Total Reviews",
+                        new_review_count,
+                        delta=f"+1 ({old_review_count} → {new_review_count})"
+                    )
+                
+                with col2:
+                    rating_change = new_avg_rating - old_avg_rating
+                    st.metric(
+                        "⭐ Avg Rating",
+                        f"{new_avg_rating:.2f}",
+                        delta=f"{rating_change:+.2f}",
+                        delta_color="normal" if rating_change >= 0 else "inverse"
+                    )
+                
+                with col3:
+                    trust_change = new_trust_weighted_score - old_trust_score
+                    st.metric(
+                        "🧠 Trust Score",
+                        f"{new_trust_weighted_score:.2f}",
+                        delta=f"{trust_change:+.2f}",
+                        delta_color="normal" if trust_change >= 0 else "inverse"
+                    )
+                
+                # Show before/after comparison
+                st.subheader("📈 Before vs After Comparison")
+                
+                comparison_data = pd.DataFrame({
+                    'Metric': ['Avg Rating', 'Trust Score', 'Review Count'],
+                    'Before': [old_avg_rating, old_trust_score, old_review_count],
+                    'After': [new_avg_rating, new_trust_weighted_score, new_review_count]
+                })
+                
+                st.dataframe(comparison_data, use_container_width=True, hide_index=True)
+                
+                # Visualize the change
+                st.subheader("📊 Product Score Change")
+                
+                score_comparison = pd.DataFrame({
+                    'Before Adding Review': [old_trust_score],
+                    'After Adding Review': [new_trust_weighted_score]
+                })
+                
+                st.bar_chart(score_comparison.T)
+                
+                # Explain the impact
+                if trust_change > 0:
+                    st.success(f"""
+                    **Positive Impact:** This review improved the product's trust score by {trust_change:.3f} points!
+                    - The review has high trust ({predicted_trust:.3f})
+                    - Product ranking will improve in trust-based recommendations
+                    """)
+                elif trust_change < 0:
+                    st.warning(f"""
+                    **Negative Impact:** This review decreased the product's trust score by {abs(trust_change):.3f} points.
+                    - The review has lower trust ({predicted_trust:.3f})
+                    - Product ranking will decrease in trust-based recommendations
+                    """)
+                else:
+                    st.info(f"""
+                    **Neutral Impact:** This review maintained the product's trust score.
+                    - The review's trust ({predicted_trust:.3f}) matches the product average
+                    """)
+                
+                # Show updated product ranking
+                st.subheader("🏆 Updated Product Ranking")
+                
+                # Update products dataframe (in memory only for demo)
+                products_updated = products.copy()
+                mask = products_updated['product_id'] == selected_product_for_review
+                if mask.any():
+                    products_updated.loc[mask, 'avg_rating'] = new_avg_rating
+                    products_updated.loc[mask, 'score_trust_weighted'] = new_trust_weighted_score
+                    if 'review_count' in products_updated.columns:
+                        products_updated.loc[mask, 'review_count'] = new_review_count
+                
+                # Show new ranking
+                top_products_updated = products_updated.nlargest(10, 'score_trust_weighted')[['product_id', 'score_trust_weighted', 'avg_rating']].copy()
+                top_products_updated['score_trust_weighted'] = top_products_updated['score_trust_weighted'].round(3)
+                top_products_updated['avg_rating'] = top_products_updated['avg_rating'].round(2)
+                top_products_updated.columns = ['Product ID', 'Trust Score', 'Avg Rating']
+                top_products_updated.insert(0, 'Rank', range(1, len(top_products_updated) + 1))
+                
+                # Highlight the updated product
+                def highlight_product(row):
+                    if row['Product ID'] == selected_product_for_review:
+                        return ['background-color: #90EE90'] * len(row)
+                    return [''] * len(row)
+                
+                st.dataframe(
+                    top_products_updated.style.apply(highlight_product, axis=1),
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                st.info(f"💡 **Product {selected_product_for_review}** is highlighted in green in the updated ranking.")
+                
+                # Note about persistence
+                st.warning("""
+                ⚠️ **Note:** This update is temporary and only affects the current session.
+                In a production system, changes would be persisted to a database.
+                Refresh the page to reset to original data.
+                """)
 
 st.divider()
 
