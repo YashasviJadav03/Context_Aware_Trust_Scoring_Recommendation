@@ -384,6 +384,7 @@ selected_from_search = False
 
 if 'selected_product' in st.session_state:
     selected_pid = str(st.session_state.selected_product)
+    
     # First check if it's in the dropdown options
     for i, option in enumerate(product_options):
         if option.startswith(selected_pid):
@@ -391,30 +392,50 @@ if 'selected_product' in st.session_state:
             selected_from_search = True
             break
     
-    # If not in dropdown, add it as an option if it exists in products
+    # If not in dropdown, add it as an option (regardless of review count)
     if not selected_from_search and selected_pid in products['product_id'].astype(str).values:
         # Get review count for this product
         review_count = len(reviews[reviews['product_id'].astype(str) == selected_pid])
-        new_option = f"{selected_pid} ({review_count} reviews) - From Search"
+        new_option = f"{selected_pid} ({review_count} reviews) - 🔍 From Search"
         product_options.insert(0, new_option)
         default_index = 0
         selected_from_search = True
+        st.info(f"🔍 Added searched product {selected_pid} to selection (has {review_count} reviews)")
 
 # Show search selection info
 if selected_from_search:
-    st.success(f"🔍 Product {st.session_state.selected_product} selected from search results!")
+    st.success(f"🎯 Product **{st.session_state.selected_product}** selected from search results!")
 
 selected_option = st.selectbox(
     "Select a product to analyze:",
     product_options,
     index=default_index,
+    key="product_selector",  # Add key for better state management
     help="Products with at least 5 reviews are shown. Use search above to find specific products."
 )
 
 # Extract product_id from selection
 product_id = selected_option.split(' (')[0]
 
-st.info(f"Selected Product ID: **{product_id}**")
+# Update session state if user manually changes selection
+if product_id != st.session_state.get('selected_product', ''):
+    st.session_state.selected_product = product_id
+
+st.info(f"📊 Analyzing Product: **{product_id}**")
+
+# Debug: Check if searched product exists and has reviews
+if 'selected_product' in st.session_state and selected_from_search:
+    debug_pid = str(st.session_state.selected_product)
+    debug_reviews = reviews[reviews['product_id'].astype(str) == debug_pid]
+    debug_product = products[products['product_id'].astype(str) == debug_pid]
+    
+    with st.expander("🔍 Search Debug Info"):
+        if len(debug_product) == 0:
+            st.error(f"❌ Product {debug_pid} not found in products dataset")
+        elif len(debug_reviews) == 0:
+            st.warning(f"⚠️ Product {debug_pid} has no reviews in sample dataset")
+        else:
+            st.success(f"✅ Product {debug_pid} found: {len(debug_reviews)} reviews, Trust Score: {debug_product['score_trust_weighted'].iloc[0]:.2f}")
 
 st.divider()
 
