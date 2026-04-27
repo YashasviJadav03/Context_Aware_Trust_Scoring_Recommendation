@@ -537,13 +537,3 @@ st.divider()
 # FOOTER
 # ============================================================================
 
-st.markdown("---")
-st.markdown("""
-### 🎯 Demo Goals Achieved:
-✅ Reviews ranked by trust (not just rating)  
-✅ Product ranking improves using trust-weighted aggregation  
-✅ Low-quality reviews can be filtered out  
-
-**System Status:** Ready for Production  
-**Data Source:** Google Drive (cloud-hosted)
-""")
