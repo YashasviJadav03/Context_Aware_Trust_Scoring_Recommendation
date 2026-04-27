@@ -8,86 +8,79 @@ import pandas as pd
 import numpy as np
 
 # ============================================================================
+# PAGE CONFIGURATION - MUST BE FIRST STREAMLIT COMMAND
+# ============================================================================
+
+st.set_page_config(
+    page_title="Trust-Based Recommendation System",
+    page_icon="🧠",
+    layout="wide"
+)
+
+# ============================================================================
 # DATA LOADING - GOOGLE DRIVE VERSION WITH FALLBACK
 # ============================================================================
 
 @st.cache_data
 def load_data():
-    """Load review and product data from Google Drive with caching and fallback"""
+    """Load review and product data from Google Drive with caching and fallback
     
-    # TODO: Replace these with your actual Google Drive file IDs
-    # After uploading to Google Drive, get the file ID from the shareable link
-    # Example: https://drive.google.com/file/d/1ABCxyz123/view -> File ID = 1ABCxyz123
+    Returns:
+        tuple: (reviews_df, products_df, status_message) where status_message
+               contains loading status information for display in main script
+    """
     
+    # File IDs for Google Drive
     REVIEWS_FILE_ID = "1brikM4-iQTUmsSZtqkLqFMFHWxdZp9cd"
     PRODUCTS_FILE_ID = "1bnwZBcnnzfGDRYpPg5Vr-wFYfsk6T5PG"
     
     # Option to use local files for testing
     USE_LOCAL_FILES = REVIEWS_FILE_ID == "YOUR_REVIEWS_FILE_ID_HERE"
     
+    status_message = ""
+    
     if USE_LOCAL_FILES:
-        st.warning("⚠️ Using local files (File IDs not updated)")
+        # Try local files
         try:
             reviews = pd.read_csv("../data/processed/reviews_sample.csv")
             products = pd.read_csv("../data/processed/product_trust_scores.csv")
-            st.success(f"✅ Local sample data loaded: {len(reviews):,} reviews, {len(products):,} products")
+            status_message = f"✅ Local sample data loaded: {len(reviews):,} reviews, {len(products):,} products"
         except FileNotFoundError:
             # Try demo folder sample files
             try:
                 reviews = pd.read_csv("reviews_sample.csv")
                 products = pd.read_csv("products_sample.csv")
-                st.success(f"✅ Demo sample data loaded: {len(reviews):,} reviews, {len(products):,} products")
+                status_message = f"✅ Demo sample data loaded: {len(reviews):,} reviews, {len(products):,} products"
             except FileNotFoundError:
-                st.error("❌ Sample CSV files not found. Please update File IDs to use Google Drive.")
-                st.stop()
+                raise FileNotFoundError("Sample CSV files not found. Please update File IDs to use Google Drive.")
     else:
-        # Construct Google Drive direct download URLs
-        # For large files, we need to handle Google's virus scan warning
-        reviews_url = f"https://drive.google.com/uc?export=download&id={REVIEWS_FILE_ID}&confirm=t"
-        products_url = f"https://drive.google.com/uc?export=download&id={PRODUCTS_FILE_ID}&confirm=t"
-        
+        # Load from Google Drive
         try:
-            # Load data from Google Drive with proper CSV parsing
-            with st.spinner("📥 Loading data..."):
+            # Try different URL formats for large files
+            def load_large_csv_from_gdrive(file_id, file_name):
+                urls_to_try = [
+                    f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t",
+                    f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t",
+                    f"https://drive.google.com/uc?id={file_id}&export=download"
+                ]
                 
-                # Try different URL formats for large files
-                def load_large_csv_from_gdrive(file_id, file_name):
-                    urls_to_try = [
-                        f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t",
-                        f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t",
-                        f"https://drive.google.com/uc?id={file_id}&export=download"
-                    ]
-                    
-                    for i, url in enumerate(urls_to_try):
-                        try:
-                            df = pd.read_csv(url)
-                            if len(df) > 0 and len(df.columns) > 3:  # Basic validation
-                                return df
-                        except Exception as e:
-                            continue
-                    
-                    raise Exception(f"Failed to load {file_name} from Google Drive")
+                for i, url in enumerate(urls_to_try):
+                    try:
+                        df = pd.read_csv(url)
+                        if len(df) > 0 and len(df.columns) > 3:  # Basic validation
+                            return df
+                    except Exception as e:
+                        continue
                 
-                # Load reviews and products
-                reviews = load_large_csv_from_gdrive(REVIEWS_FILE_ID, "reviews")
-                products = load_large_csv_from_gdrive(PRODUCTS_FILE_ID, "products")
-                
-            st.success(f"✅ Data loaded from Google Drive: {len(reviews):,} reviews, {len(products):,} products")
-        except Exception as e:
-            st.error(f"❌ Error loading data from Google Drive: {e}")
-            st.error("**Possible solutions:**")
-            st.error("1. Files are too large (>100MB) - Google Drive blocks direct CSV loading")
-            st.error("2. Try using smaller sample files for demo")
-            st.error("3. Use a different hosting service (Dropbox, AWS S3, etc.)")
-            st.error("4. File IDs are incorrect or files aren't shared properly")
+                raise Exception(f"Failed to load {file_name} from Google Drive")
             
-            # Show debug info
-            st.error("**Debug info:**")
-            st.code(f"Reviews File ID: {REVIEWS_FILE_ID}")
-            st.code(f"Products File ID: {PRODUCTS_FILE_ID}")
-            st.code(f"Reviews URL: {reviews_url}")
-            st.code(f"Products URL: {products_url}")
-            st.stop()
+            # Load reviews and products
+            reviews = load_large_csv_from_gdrive(REVIEWS_FILE_ID, "reviews")
+            products = load_large_csv_from_gdrive(PRODUCTS_FILE_ID, "products")
+            
+            status_message = f"✅ Data loaded from Google Drive: {len(reviews):,} reviews, {len(products):,} products"
+        except Exception as e:
+            raise Exception(f"Error loading data from Google Drive: {e}")
     
     # Validate and fix column names (silent processing)
     review_col_mapping = {
@@ -129,12 +122,10 @@ def load_data():
     missing_product_cols = [col for col in required_product_cols if col not in products.columns]
     
     if missing_review_cols:
-        st.error(f"❌ Missing review columns: {missing_review_cols}")
-        st.stop()
+        raise ValueError(f"Missing review columns: {missing_review_cols}")
         
     if missing_product_cols:
-        st.error(f"❌ Missing product columns: {missing_product_cols}")
-        st.stop()
+        raise ValueError(f"Missing product columns: {missing_product_cols}")
     
     # Add missing columns with defaults if needed
     if 'verified' not in reviews.columns:
@@ -143,20 +134,29 @@ def load_data():
     if 'helpful_votes' not in reviews.columns:
         reviews['helpful_votes'] = 0
     
-    return reviews, products
+    return reviews, products, status_message
 
 # Load data
-reviews, products = load_data()
+    return reviews, products, status_message
 
 # ============================================================================
-# PAGE CONFIGURATION
+# LOAD DATA WITH STATUS DISPLAY
 # ============================================================================
 
-st.set_page_config(
-    page_title="Trust-Based Recommendation System",
-    page_icon="🧠",
-    layout="wide"
-)
+try:
+    with st.spinner("📥 Loading data..."):
+        reviews, products, load_status = load_data()
+    
+    # Display success message
+    st.success(load_status)
+except Exception as e:
+    st.error(f"❌ Error loading data: {e}")
+    st.error("**Possible solutions:**")
+    st.error("1. Files are too large (>100MB) - Google Drive blocks direct CSV loading")
+    st.error("2. Try using smaller sample files for demo")
+    st.error("3. Use a different hosting service (Dropbox, AWS S3, etc.)")
+    st.error("4. File IDs are incorrect or files aren't shared properly")
+    st.stop()
 
 # ============================================================================
 # HEADER
