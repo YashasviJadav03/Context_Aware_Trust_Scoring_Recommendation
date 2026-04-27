@@ -179,9 +179,13 @@ st.header("🔍 Product Search")
 # Search input with advanced options
 col1, col2 = st.columns([3, 1])
 with col1:
-    search_query = st.text_input("Search for products:", placeholder="e.g., 'B014EB2ADA' or 'B01' for partial match")
+    search_query = st.text_input("Search for products:", placeholder="e.g., 'B014EB2ADA' or 'B01' for partial match", key="search_input")
 with col2:
     search_mode = st.selectbox("Search Mode", ["Smart Search", "Exact Match", "High Trust Only"])
+
+# Initialize selected product in session state if not exists
+if 'selected_product' not in st.session_state:
+    st.session_state.selected_product = None
 
 if search_query:
     # Real search functionality
@@ -191,12 +195,10 @@ if search_query:
     search_results = pd.DataFrame()
     
     if search_mode == "Exact Match":
-        # Only exact matches
         search_results = products[products['product_id'].str.upper() == search_query_upper]
         search_type = "Exact Match"
         
     elif search_mode == "High Trust Only":
-        # Search within high trust products only (top 25%)
         high_trust_threshold = products['score_trust_weighted'].quantile(0.75)
         high_trust_products = products[products['score_trust_weighted'] >= high_trust_threshold]
         
@@ -208,19 +210,15 @@ if search_query:
             search_type = "High Trust Products"
             
     else:  # Smart Search (default)
-        # 1. Exact product ID match
         exact_match = products[products['product_id'].str.upper() == search_query_upper]
-        
-        # 2. Partial product ID match (starts with)
         partial_match = products[products['product_id'].str.upper().str.startswith(search_query_upper)]
-        
-        # 3. Contains search term
         contains_match = products[products['product_id'].str.upper().str.contains(search_query_upper, na=False)]
         
-        # Combine results (exact first, then partial, then contains)
         if len(exact_match) > 0:
             search_results = exact_match
             search_type = "Exact Match"
+            # Auto-select exact match
+            st.session_state.selected_product = exact_match.iloc[0]['product_id']
         elif len(partial_match) > 0:
             search_results = partial_match.head(10)
             search_type = "Partial Match"
@@ -228,7 +226,6 @@ if search_query:
             search_results = contains_match.head(10)
             search_type = "Contains Match"
         else:
-            # No matches - suggest similar products
             search_results = products.nlargest(5, 'score_trust_weighted')
             search_type = "No matches - Top Suggestions"
     
@@ -245,7 +242,8 @@ if search_query:
         else:
             st.warning(f"**No Results** - No products found for '{search_query}'")
     with col2:
-        if st.button("🔄 Clear Search"):
+        if st.button("🔄 Clear Search", key="clear_search"):
+            st.session_state.selected_product = None
             st.rerun()
     with col3:
         if len(search_results) > 0:
@@ -349,93 +347,84 @@ st.info(f"Products in both top 5: {len(common_products)}/5 - Shows ranking diffe
 st.divider()
 
 # ============================================================================
-# SECTION 1 — PRODUCT SELECTION
+# SECTION 1 — PRODUCT SELECTION (DYNAMIC)
 # ============================================================================
 
-st.header("📦 Section 1: Product Selection")
+st.header("📦 Product Analysis")
 
-# Get products with multiple reviews for better demo
-try:
-    product_review_counts = reviews.groupby('product_id').size().reset_index(name='count')
-    products_with_reviews = product_review_counts[product_review_counts['count'] >= 5].sort_values('count', ascending=False)
-except KeyError as e:
-    st.error(f"❌ Column error: {e}")
-    st.error(f"Available columns in reviews: {list(reviews.columns)}")
-    st.error("Make sure 'product_id' column exists in your CSV file")
-    st.stop()
-except Exception as e:
-    st.error(f"❌ Error processing product counts: {e}")
-    st.stop()
-
-# Create product options with review counts
-product_options = []
-for _, row in products_with_reviews.head(100).iterrows():
-    pid = row['product_id']
-    count = row['count']
-    product_options.append(f"{pid} ({count} reviews)")
-
-if not product_options:
-    st.error("❌ No products found with sufficient reviews")
-    st.stop()
-
-# Check if a product was selected from search
-default_index = 0
-selected_from_search = False
-
-if 'selected_product' in st.session_state:
-    selected_pid = str(st.session_state.selected_product)
+# Use selected product from search if available, otherwise show dropdown
+if st.session_state.selected_product:
+    # Product selected from search - show it prominently
+    product_id = str(st.session_state.selected_product)
     
-    # First check if it's in the dropdown options
-    for i, option in enumerate(product_options):
-        if option.startswith(selected_pid):
-            default_index = i
-            selected_from_search = True
-            break
+    st.success(f"🎯 Analyzing Product: **{product_id}** (from search)")
     
-    # If not in dropdown, add it as an option (regardless of review count)
-    if not selected_from_search and selected_pid in products['product_id'].astype(str).values:
-        # Get review count for this product
-        review_count = len(reviews[reviews['product_id'].astype(str) == selected_pid])
-        new_option = f"{selected_pid} ({review_count} reviews) - 🔍 From Search"
-        product_options.insert(0, new_option)
-        default_index = 0
-        selected_from_search = True
-        st.info(f"🔍 Added searched product {selected_pid} to selection (has {review_count} reviews)")
+    # Option to change product
+    if st.button("🔄 Select Different Product", key="change_product"):
+        st.session_state.selected_product = None
+        st.rerun()
+    
+else:
+    # No search selection - show dropdown
+    st.info("💡 Search for a product above, or select from popular products below")
+    
+    # Get products with multiple reviews for better demo
+    try:
+        product_review_counts = reviews.groupby('product_id').size().reset_index(name='count')
+        products_with_reviews = product_review_counts[product_review_counts['count'] >= 5].sort_values('count', ascending=False)
+    except KeyError as e:
+        st.error(f"❌ Column error: {e}")
+        st.stop()
+    except Exception as e:
+        st.error(f"❌ Error processing product counts: {e}")
+        st.stop()
 
-# Show search selection info
-if selected_from_search:
-    st.success(f"🎯 Product **{st.session_state.selected_product}** selected from search results!")
+    # Create product options with review counts
+    product_options = []
+    for _, row in products_with_reviews.head(100).iterrows():
+        pid = row['product_id']
+        count = row['count']
+        product_options.append(f"{pid} ({count} reviews)")
 
-selected_option = st.selectbox(
-    "Select a product to analyze:",
-    product_options,
-    index=default_index,
-    key="product_selector",  # Add key for better state management
-    help="Products with at least 5 reviews are shown. Use search above to find specific products."
-)
+    if not product_options:
+        st.error("❌ No products found with sufficient reviews")
+        st.stop()
 
-# Extract product_id from selection
-product_id = selected_option.split(' (')[0]
+    selected_option = st.selectbox(
+        "Select a product to analyze:",
+        product_options,
+        key="product_selector_dropdown",
+        help="Products with at least 5 reviews are shown"
+    )
 
-# Update session state if user manually changes selection
-if product_id != st.session_state.get('selected_product', ''):
+    # Extract product_id from selection
+    product_id = selected_option.split(' (')[0]
     st.session_state.selected_product = product_id
 
-st.info(f"📊 Analyzing Product: **{product_id}**")
-
-# Debug: Check if searched product exists and has reviews
-if 'selected_product' in st.session_state and selected_from_search:
-    debug_pid = str(st.session_state.selected_product)
-    debug_reviews = reviews[reviews['product_id'].astype(str) == debug_pid]
-    debug_product = products[products['product_id'].astype(str) == debug_pid]
+# Show prominent indicator of what's being analyzed
+st.markdown("---")
+if st.session_state.selected_product:
+    product_id = str(st.session_state.selected_product)
+    current_product = products[products['product_id'].astype(str) == product_id]
+    current_reviews = reviews[reviews['product_id'].astype(str) == product_id]
     
-    with st.expander("🔍 Search Debug Info"):
-        if len(debug_product) == 0:
-            st.error(f"❌ Product {debug_pid} not found in products dataset")
-        elif len(debug_reviews) == 0:
-            st.warning(f"⚠️ Product {debug_pid} has no reviews in sample dataset")
-        else:
-            st.success(f"✅ Product {debug_pid} found: {len(debug_reviews)} reviews, Trust Score: {debug_product['score_trust_weighted'].iloc[0]:.2f}")
+    if len(current_product) > 0 and len(current_reviews) > 0:
+        trust_score = current_product['score_trust_weighted'].iloc[0]
+        avg_rating = current_product['avg_rating'].iloc[0]
+        review_count = len(current_reviews)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("📦 Product ID", product_id)
+        with col2:
+            st.metric("🧠 Trust Score", f"{trust_score:.2f}")
+        with col3:
+            st.metric("⭐ Avg Rating", f"{avg_rating:.2f}")
+        with col4:
+            st.metric("📊 Reviews", review_count)
+    else:
+        st.error(f"❌ Product {product_id} not found or has no reviews in dataset")
+        st.stop()
 
 st.divider()
 
