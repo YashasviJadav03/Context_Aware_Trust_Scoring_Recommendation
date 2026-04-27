@@ -6,6 +6,9 @@ Fixed Version with Better Error Handling
 import streamlit as st
 import pandas as pd
 import numpy as np
+import joblib
+from datetime import datetime
+import re
 
 # ============================================================================
 # PAGE CONFIGURATION - MUST BE FIRST STREAMLIT COMMAND
@@ -16,6 +19,143 @@ st.set_page_config(
     page_icon="🧠",
     layout="wide"
 )
+
+# ============================================================================
+# MODEL LOADING - INFERENCE PIPELINE
+# ============================================================================
+
+@st.cache_resource
+def load_models():
+    """Load trained models for inference"""
+    try:
+        tfidf = joblib.load("models/tfidf_vectorizer.pkl")
+        scaler = joblib.load("models/feature_scaler.pkl")
+        model = joblib.load("models/trained/best_trust_model.pkl")
+        return tfidf, scaler, model
+    except Exception as e:
+        st.error(f"❌ Error loading models: {e}")
+        return None, None, None
+
+# Load models once
+tfidf_vectorizer, feature_scaler, trust_model = load_models()
+
+# ============================================================================
+# FEATURE ENGINEERING FOR NEW REVIEWS
+# ============================================================================
+
+def extract_features_for_review(review_text, rating, verified, helpful_votes=0, 
+                                 user_review_count=1, product_review_count=10,
+                                 product_rating_variance=0.5, days_since_first=30):
+    """
+    Extract features from a new review for inference
+    
+    Parameters:
+    - review_text: str - The review text
+    - rating: int - Rating (1-5)
+    - verified: bool - Verified purchase
+    - helpful_votes: int - Number of helpful votes (default 0 for new reviews)
+    - user_review_count: int - Total reviews by this user (default 1)
+    - product_review_count: int - Total reviews for this product (default 10)
+    - product_rating_variance: float - Variance of product ratings (default 0.5)
+    - days_since_first: int - Days since product's first review (default 30)
+    
+    Returns:
+    - dict: Feature dictionary
+    """
+    
+    # Text features
+    review_length = len(review_text.split())
+    exclamation_count = review_text.count('!')
+    question_count = review_text.count('?')
+    
+    # Sentiment (simplified - using exclamation as proxy)
+    sentiment_score = min(exclamation_count * 0.2, 1.0) if rating >= 4 else -min(exclamation_count * 0.2, 1.0)
+    sentiment_extreme = abs(sentiment_score)
+    
+    # Repetition ratio (simplified)
+    words = review_text.lower().split()
+    unique_words = len(set(words))
+    repetition_ratio = 1 - (unique_words / len(words)) if len(words) > 0 else 0
+    
+    # User features
+    user_review_frequency = user_review_count / max(days_since_first, 1)
+    
+    # Product features
+    product_popularity_log = np.log1p(product_review_count)
+    
+    # Temporal features
+    review_density = product_review_count / max(days_since_first, 1)
+    review_time_gap = 1  # Default for new reviews
+    
+    # Rating features
+    rating_deviation = abs(rating - 4.0)  # Assume product mean is 4.0
+    helpful_ratio = helpful_votes / (helpful_votes + 1)
+    
+    features = {
+        'review_length': review_length,
+        'sentiment_score': sentiment_score,
+        'sentiment_extreme': sentiment_extreme,
+        'repetition_ratio': repetition_ratio,
+        'exclamation_count': exclamation_count,
+        'question_count': question_count,
+        'user_review_count': user_review_count,
+        'user_review_frequency': user_review_frequency,
+        'product_review_count': product_review_count,
+        'product_rating_variance': product_rating_variance,
+        'product_popularity_log': product_popularity_log,
+        'days_since_first_review': days_since_first,
+        'review_density': review_density,
+        'review_time_gap': review_time_gap,
+        'rating': rating,
+        'rating_deviation': rating_deviation,
+        'verified': 1 if verified else 0,
+        'helpful_ratio': helpful_ratio
+    }
+    
+    return features
+
+def predict_trust_score(review_text, rating, verified=True, helpful_votes=0,
+                        user_review_count=1, product_review_count=10):
+    """
+    Predict trust score for a new review using trained models
+    
+    Returns:
+    - float: Trust score (0-1)
+    """
+    if tfidf_vectorizer is None or feature_scaler is None or trust_model is None:
+        return 0.5  # Default score if models not loaded
+    
+    try:
+        # Extract structured features
+        features = extract_features_for_review(
+            review_text, rating, verified, helpful_votes,
+            user_review_count, product_review_count
+        )
+        
+        # Create feature dataframe
+        feature_df = pd.DataFrame([features])
+        
+        # Get TF-IDF features
+        tfidf_features = tfidf_vectorizer.transform([review_text]).toarray()
+        
+        # Combine features
+        structured_features = feature_df.values
+        combined_features = np.hstack([structured_features, tfidf_features])
+        
+        # Scale features
+        scaled_features = feature_scaler.transform(combined_features)
+        
+        # Predict trust score
+        trust_score = trust_model.predict(scaled_features)[0]
+        
+        # Clip to valid range [0, 1]
+        trust_score = np.clip(trust_score, 0, 1)
+        
+        return trust_score
+    
+    except Exception as e:
+        st.error(f"Error predicting trust score: {e}")
+        return 0.5  # Default score on error
 
 # ============================================================================
 # DATA LOADING - GOOGLE DRIVE VERSION WITH FALLBACK
@@ -717,6 +857,215 @@ st.info(f"""
 
 This shows how trust-based ranking differs from simple rating averages.
 """)
+
+st.divider()
+
+# ============================================================================
+# SECTION 5 — DYNAMIC TRUST SCORING (NEW REVIEW INFERENCE)
+# ============================================================================
+
+st.header("🎯 Section 5: Dynamic Trust Scoring")
+st.markdown("""
+**Try the live inference pipeline!** Enter a new review and see its predicted trust score in real-time.
+The system uses the trained model to score new reviews without retraining.
+""")
+
+# Create two columns for input
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.subheader("📝 Enter New Review")
+    
+    # Review text input
+    new_review_text = st.text_area(
+        "Review Text:",
+        placeholder="e.g., 'This product is amazing! Great quality and fast shipping. Highly recommend!'",
+        height=100,
+        help="Enter the review text to analyze"
+    )
+    
+    # Rating input
+    new_rating = st.slider(
+        "Rating:",
+        min_value=1,
+        max_value=5,
+        value=5,
+        help="Star rating (1-5)"
+    )
+    
+    # Verified purchase
+    new_verified = st.checkbox(
+        "Verified Purchase",
+        value=True,
+        help="Is this a verified purchase?"
+    )
+
+with col2:
+    st.subheader("⚙️ Advanced Options")
+    
+    # Advanced features (optional)
+    with st.expander("Advanced Features (Optional)"):
+        new_helpful_votes = st.number_input(
+            "Helpful Votes:",
+            min_value=0,
+            value=0,
+            help="Number of helpful votes (0 for new reviews)"
+        )
+        
+        new_user_review_count = st.number_input(
+            "User's Total Reviews:",
+            min_value=1,
+            value=1,
+            help="Total reviews by this user"
+        )
+        
+        new_product_review_count = st.number_input(
+            "Product's Total Reviews:",
+            min_value=1,
+            value=10,
+            help="Total reviews for this product"
+        )
+
+# Predict button
+if st.button("🔮 Predict Trust Score", type="primary", use_container_width=True):
+    if not new_review_text or len(new_review_text.strip()) < 3:
+        st.error("❌ Please enter a review with at least 3 characters")
+    else:
+        with st.spinner("🧠 Analyzing review..."):
+            # Predict trust score
+            predicted_trust = predict_trust_score(
+                review_text=new_review_text,
+                rating=new_rating,
+                verified=new_verified,
+                helpful_votes=new_helpful_votes,
+                user_review_count=new_user_review_count,
+                product_review_count=new_product_review_count
+            )
+            
+            # Display results
+            st.success("✅ Trust score predicted successfully!")
+            
+            # Create metrics display
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric(
+                    "🧠 Trust Score",
+                    f"{predicted_trust:.4f}",
+                    help="Predicted trust score (0-1 scale)"
+                )
+            
+            with col2:
+                trust_percentage = predicted_trust * 100
+                st.metric(
+                    "📊 Trust %",
+                    f"{trust_percentage:.1f}%",
+                    help="Trust score as percentage"
+                )
+            
+            with col3:
+                trust_normalized = predicted_trust * 5
+                st.metric(
+                    "⭐ Normalized (1-5)",
+                    f"{trust_normalized:.2f}",
+                    help="Trust score normalized to 1-5 scale"
+                )
+            
+            with col4:
+                # Classify trust level
+                if predicted_trust >= 0.7:
+                    trust_level = "🟢 High Trust"
+                    level_color = "normal"
+                elif predicted_trust >= 0.4:
+                    trust_level = "🟡 Medium Trust"
+                    level_color = "off"
+                else:
+                    trust_level = "🔴 Low Trust"
+                    level_color = "inverse"
+                
+                st.metric(
+                    "🎯 Trust Level",
+                    trust_level,
+                    help="Classification based on trust score"
+                )
+            
+            # Interpretation
+            st.subheader("📋 Interpretation")
+            
+            if predicted_trust >= 0.7:
+                st.success(f"""
+                **High Trust Review** (Score: {predicted_trust:.4f})
+                - This review appears genuine and trustworthy
+                - Likely from a real customer with authentic experience
+                - Should be weighted heavily in product ranking
+                """)
+            elif predicted_trust >= 0.4:
+                st.info(f"""
+                **Medium Trust Review** (Score: {predicted_trust:.4f})
+                - This review has some trustworthy characteristics
+                - May be genuine but lacks strong trust signals
+                - Should be weighted moderately in product ranking
+                """)
+            else:
+                st.warning(f"""
+                **Low Trust Review** (Score: {predicted_trust:.4f})
+                - This review shows suspicious patterns
+                - May be fake, biased, or low-quality
+                - Should be weighted lightly or filtered out
+                """)
+            
+            # Feature breakdown
+            st.subheader("🔍 Feature Analysis")
+            
+            # Extract features for display
+            features = extract_features_for_review(
+                new_review_text, new_rating, new_verified, new_helpful_votes,
+                new_user_review_count, new_product_review_count
+            )
+            
+            # Display key features
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.write("**Text Features:**")
+                st.write(f"- Review Length: {features['review_length']} words")
+                st.write(f"- Exclamations: {features['exclamation_count']}")
+                st.write(f"- Questions: {features['question_count']}")
+                st.write(f"- Repetition: {features['repetition_ratio']:.3f}")
+            
+            with col2:
+                st.write("**User Features:**")
+                st.write(f"- User Reviews: {features['user_review_count']}")
+                st.write(f"- Review Frequency: {features['user_review_frequency']:.3f}")
+                st.write(f"- Verified: {'Yes' if new_verified else 'No'}")
+            
+            with col3:
+                st.write("**Rating Features:**")
+                st.write(f"- Rating: {new_rating}/5")
+                st.write(f"- Rating Deviation: {features['rating_deviation']:.2f}")
+                st.write(f"- Helpful Ratio: {features['helpful_ratio']:.3f}")
+            
+            # Show how this would affect product ranking
+            st.subheader("📈 Impact on Product Ranking")
+            
+            # Calculate trust-weighted rating
+            trust_weighted_rating = new_rating * predicted_trust
+            
+            comparison_df = pd.DataFrame({
+                'Metric': ['Simple Average', 'Trust-Weighted'],
+                'Score': [new_rating, trust_weighted_rating]
+            })
+            
+            st.bar_chart(comparison_df.set_index('Metric'))
+            
+            st.info(f"""
+            **Product Ranking Impact:**
+            - Simple average would add: **{new_rating:.2f}** to product score
+            - Trust-weighted would add: **{trust_weighted_rating:.2f}** to product score
+            - Difference: **{abs(new_rating - trust_weighted_rating):.2f}** points
+            
+            This shows how trust scoring prevents fake reviews from inflating product rankings!
+            """)
 
 st.divider()
 
