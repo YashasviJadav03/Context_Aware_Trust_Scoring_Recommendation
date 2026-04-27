@@ -942,14 +942,459 @@ This shows how trust-based ranking differs from simple rating averages.
 st.divider()
 
 # ============================================================================
-# SECTION 5 — DYNAMIC TRUST SCORING (NEW REVIEW INFERENCE)
+# SECTION 5 — IMPROVED UI FLOW: DYNAMIC PRODUCT ANALYSIS
 # ============================================================================
 
-st.header("🎯 Section 5: Dynamic Trust Scoring")
+st.header("🎯 Section 5: Dynamic Product Analysis & Review Addition")
 st.markdown("""
-**Try the live inference pipeline!** Enter a new review and see its predicted trust score in real-time.
-The system uses the trained model to score new reviews without retraining.
+**Complete workflow:** Select a product → View current metrics → Add a new review → See instant impact on rankings!
 """)
+
+st.divider()
+
+# ============================================================================
+# 1️⃣ PRODUCT INFO
+# ============================================================================
+
+st.subheader("1️⃣ Product Information")
+
+# Product selection
+col_select1, col_select2 = st.columns([3, 1])
+
+with col_select1:
+    # Get list of products for selection
+    product_list = products['product_id'].unique().tolist()[:100]  # Top 100 products
+    
+    selected_product_dynamic = st.selectbox(
+        "Select a product to analyze:",
+        options=product_list,
+        key="dynamic_product_selector",
+        help="Choose a product to view details and add a review"
+    )
+
+with col_select2:
+    if st.button("🔄 Reset", key="reset_dynamic"):
+        st.rerun()
+
+# Display full product information
+if selected_product_dynamic:
+    st.markdown("---")
+    display_product_info(selected_product_dynamic, show_image=True, show_details=True)
+
+st.divider()
+
+# ============================================================================
+# 2️⃣ PRODUCT SCORES (CURRENT STATE)
+# ============================================================================
+
+st.subheader("2️⃣ Current Product Scores")
+
+if selected_product_dynamic:
+    # Get current product data
+    current_prod = products[products['product_id'] == selected_product_dynamic]
+    current_revs = reviews[reviews['product_id'] == selected_product_dynamic]
+    
+    if len(current_prod) > 0:
+        current_avg_rating = current_prod['avg_rating'].iloc[0]
+        current_trust_score = current_prod['score_trust_weighted'].iloc[0]
+        current_review_count = len(current_revs)
+        
+        # Display current metrics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                "📊 Total Reviews",
+                current_review_count,
+                help="Number of reviews for this product"
+            )
+        
+        with col2:
+            st.metric(
+                "⭐ Average Rating",
+                f"{current_avg_rating:.2f}",
+                help="Simple average of all ratings"
+            )
+        
+        with col3:
+            st.metric(
+                "🧠 Trust Score",
+                f"{current_trust_score:.2f}",
+                help="Trust-weighted score (our system)"
+            )
+        
+        with col4:
+            score_diff = current_trust_score - current_avg_rating
+            st.metric(
+                "📈 Difference",
+                f"{score_diff:+.2f}",
+                help="Trust score - Average rating"
+            )
+        
+        # Show current ranking position
+        st.markdown("**Current Ranking Position:**")
+        products_sorted = products.sort_values('score_trust_weighted', ascending=False).reset_index(drop=True)
+        current_rank = products_sorted[products_sorted['product_id'] == selected_product_dynamic].index[0] + 1
+        total_products = len(products_sorted)
+        
+        st.info(f"🏆 This product is ranked **#{current_rank}** out of {total_products} products (by trust score)")
+
+st.divider()
+
+# ============================================================================
+# 3️⃣ ADD NEW REVIEW
+# ============================================================================
+
+st.subheader("3️⃣ Add New Review")
+
+if selected_product_dynamic:
+    st.markdown("Enter a new review for this product and see how it affects the trust score and ranking!")
+    
+    # Review input
+    col_input1, col_input2 = st.columns([2, 1])
+    
+    with col_input1:
+        # Review text
+        new_review_text = st.text_area(
+            "Review Text:",
+            placeholder="e.g., 'This product exceeded my expectations! Great quality and fast shipping.'",
+            height=120,
+            key="new_review_text_dynamic",
+            help="Enter your review text (minimum 3 characters)"
+        )
+        
+        # Rating
+        new_rating = st.slider(
+            "Rating (1-5 stars):",
+            min_value=1,
+            max_value=5,
+            value=5,
+            key="new_rating_dynamic",
+            help="Select your rating"
+        )
+        
+        # Verified purchase
+        new_verified = st.checkbox(
+            "✓ Verified Purchase",
+            value=True,
+            key="new_verified_dynamic",
+            help="Is this a verified purchase?"
+        )
+    
+    with col_input2:
+        st.markdown("**Advanced Options**")
+        
+        with st.expander("⚙️ Optional Settings"):
+            new_helpful_votes = st.number_input(
+                "Helpful Votes:",
+                min_value=0,
+                value=0,
+                key="helpful_votes_dynamic"
+            )
+            
+            new_user_review_count = st.number_input(
+                "User's Total Reviews:",
+                min_value=1,
+                value=1,
+                key="user_reviews_dynamic"
+            )
+    
+    # Predict and add button
+    col_btn1, col_btn2 = st.columns(2)
+    
+    with col_btn1:
+        predict_button = st.button(
+            "🔮 Predict Trust Score",
+            type="primary",
+            use_container_width=True,
+            key="predict_dynamic"
+        )
+    
+    with col_btn2:
+        add_to_dataset = st.checkbox(
+            "📊 Add to dataset",
+            value=True,
+            key="add_dataset_dynamic",
+            help="Update product ranking with this review"
+        )
+    
+    # Process prediction
+    if predict_button:
+        if not new_review_text or len(new_review_text.strip()) < 3:
+            st.error("❌ Please enter a review with at least 3 characters")
+        else:
+            with st.spinner("🧠 Analyzing review..."):
+                # Predict trust score
+                predicted_trust = predict_trust_score(
+                    review_text=new_review_text,
+                    rating=new_rating,
+                    verified=new_verified,
+                    helpful_votes=new_helpful_votes,
+                    user_review_count=new_user_review_count,
+                    product_review_count=current_review_count
+                )
+                
+                # Display prediction result
+                st.success("✅ Trust score predicted successfully!")
+                
+                # Show predicted trust score
+                col_result1, col_result2, col_result3 = st.columns(3)
+                
+                with col_result1:
+                    st.metric(
+                        "🧠 Predicted Trust Score",
+                        f"{predicted_trust:.4f}",
+                        help="Trust score for this review (0-1 scale)"
+                    )
+                
+                with col_result2:
+                    trust_percentage = predicted_trust * 100
+                    st.metric(
+                        "📊 Trust Percentage",
+                        f"{trust_percentage:.1f}%",
+                        help="Trust score as percentage"
+                    )
+                
+                with col_result3:
+                    # Classify trust level
+                    if predicted_trust >= 0.7:
+                        trust_level = "🟢 High Trust"
+                    elif predicted_trust >= 0.4:
+                        trust_level = "🟡 Medium Trust"
+                    else:
+                        trust_level = "🔴 Low Trust"
+                    
+                    st.metric(
+                        "🎯 Trust Level",
+                        trust_level,
+                        help="Classification based on trust score"
+                    )
+                
+                # Interpretation
+                if predicted_trust >= 0.7:
+                    st.success("**High Trust Review** - This review appears genuine and trustworthy.")
+                elif predicted_trust >= 0.4:
+                    st.info("**Medium Trust Review** - This review has some trustworthy characteristics.")
+                else:
+                    st.warning("**Low Trust Review** - This review shows suspicious patterns.")
+                
+                st.divider()
+                
+                # ============================================================================
+                # 4️⃣ UPDATED REVIEWS (IF ADDED TO DATASET)
+                # ============================================================================
+                
+                if add_to_dataset:
+                    st.subheader("4️⃣ Updated Reviews (Sorted by Trust)")
+                    
+                    # Create new review row
+                    new_review_row = {
+                        'user_id': f'NEW_USER_{len(reviews)}',
+                        'product_id': selected_product_dynamic,
+                        'rating': new_rating,
+                        'review_text': new_review_text,
+                        'verified': new_verified,
+                        'helpful_votes': new_helpful_votes,
+                        'trust_score': predicted_trust,
+                        'predicted_trust_score': predicted_trust
+                    }
+                    
+                    # Add to reviews dataframe
+                    new_review_df = pd.DataFrame([new_review_row])
+                    reviews_updated = pd.concat([reviews, new_review_df], ignore_index=True)
+                    
+                    # Get updated product reviews
+                    product_reviews_updated = reviews_updated[reviews_updated['product_id'] == selected_product_dynamic]
+                    product_reviews_updated = product_reviews_updated.sort_values('trust_score', ascending=False)
+                    
+                    # Show updated review count
+                    st.info(f"📊 Total reviews for this product: **{len(product_reviews_updated)}** (including your new review)")
+                    
+                    # Display top reviews
+                    st.markdown("**Top 5 Reviews by Trust Score:**")
+                    
+                    top_reviews = product_reviews_updated.head(5)
+                    
+                    for idx, (_, review) in enumerate(top_reviews.iterrows(), 1):
+                        # Highlight the new review
+                        if review['user_id'] == f'NEW_USER_{len(reviews)}':
+                            st.markdown(f"**🆕 #{idx} - Your New Review** (Trust: {review['trust_score']:.3f})")
+                            with st.container():
+                                st.markdown(f"**Rating:** {'⭐' * int(review['rating'])}")
+                                st.markdown(f"**Review:** {review['review_text'][:200]}...")
+                                st.markdown(f"**Verified:** {'✓' if review['verified'] else '✗'}")
+                        else:
+                            st.markdown(f"**#{idx}** (Trust: {review['trust_score']:.3f})")
+                            with st.expander(f"View Review #{idx}"):
+                                st.markdown(f"**Rating:** {'⭐' * int(review['rating'])}")
+                                st.markdown(f"**Review:** {review['review_text'][:200]}...")
+                                st.markdown(f"**Verified:** {'✓' if review['verified'] else '✗'}")
+                    
+                    st.divider()
+                    
+                    # ============================================================================
+                    # 5️⃣ RANKING IMPACT (BEFORE VS AFTER)
+                    # ============================================================================
+                    
+                    st.subheader("5️⃣ Ranking Impact: Before vs After")
+                    
+                    # Calculate new product metrics
+                    new_avg_rating = product_reviews_updated['rating'].mean()
+                    new_trust_weighted_score = (product_reviews_updated['rating'] * product_reviews_updated['trust_score']).sum() / product_reviews_updated['trust_score'].sum()
+                    new_review_count = len(product_reviews_updated)
+                    
+                    # Calculate changes
+                    rating_change = new_avg_rating - current_avg_rating
+                    trust_change = new_trust_weighted_score - current_trust_score
+                    
+                    # Display before/after comparison
+                    st.markdown("**📊 Score Changes:**")
+                    
+                    col_comp1, col_comp2, col_comp3 = st.columns(3)
+                    
+                    with col_comp1:
+                        st.metric(
+                            "📊 Total Reviews",
+                            new_review_count,
+                            delta=f"+1",
+                            help="Review count increased by 1"
+                        )
+                    
+                    with col_comp2:
+                        st.metric(
+                            "⭐ Average Rating",
+                            f"{new_avg_rating:.2f}",
+                            delta=f"{rating_change:+.2f}",
+                            delta_color="normal" if rating_change >= 0 else "inverse",
+                            help="Change in average rating"
+                        )
+                    
+                    with col_comp3:
+                        st.metric(
+                            "🧠 Trust Score",
+                            f"{new_trust_weighted_score:.2f}",
+                            delta=f"{trust_change:+.2f}",
+                            delta_color="normal" if trust_change >= 0 else "inverse",
+                            help="Change in trust-weighted score"
+                        )
+                    
+                    # Visual comparison
+                    st.markdown("**📈 Visual Comparison:**")
+                    
+                    comparison_df = pd.DataFrame({
+                        'Before': [current_avg_rating, current_trust_score],
+                        'After': [new_avg_rating, new_trust_weighted_score]
+                    }, index=['Avg Rating', 'Trust Score'])
+                    
+                    st.bar_chart(comparison_df)
+                    
+                    # Impact interpretation
+                    st.markdown("**💡 Impact Analysis:**")
+                    
+                    if trust_change > 0:
+                        st.success(f"""
+                        **Positive Impact!** 🎉
+                        - Your review improved the product's trust score by **{trust_change:.3f}** points
+                        - The review has high trust ({predicted_trust:.3f})
+                        - Product ranking will improve in trust-based recommendations
+                        """)
+                    elif trust_change < 0:
+                        st.warning(f"""
+                        **Negative Impact** ⚠️
+                        - Your review decreased the product's trust score by **{abs(trust_change):.3f}** points
+                        - The review has lower trust ({predicted_trust:.3f})
+                        - Product ranking will decrease in trust-based recommendations
+                        """)
+                    else:
+                        st.info(f"""
+                        **Neutral Impact** ℹ️
+                        - Your review maintained the product's trust score
+                        - The review's trust ({predicted_trust:.3f}) matches the product average
+                        """)
+                    
+                    # Updated ranking position
+                    st.markdown("**🏆 Updated Ranking Position:**")
+                    
+                    # Update products dataframe
+                    products_updated = products.copy()
+                    mask = products_updated['product_id'] == selected_product_dynamic
+                    if mask.any():
+                        products_updated.loc[mask, 'avg_rating'] = new_avg_rating
+                        products_updated.loc[mask, 'score_trust_weighted'] = new_trust_weighted_score
+                    
+                    # Calculate new ranking
+                    products_sorted_new = products_updated.sort_values('score_trust_weighted', ascending=False).reset_index(drop=True)
+                    new_rank = products_sorted_new[products_sorted_new['product_id'] == selected_product_dynamic].index[0] + 1
+                    rank_change = current_rank - new_rank
+                    
+                    col_rank1, col_rank2 = st.columns(2)
+                    
+                    with col_rank1:
+                        st.metric(
+                            "Previous Rank",
+                            f"#{current_rank}",
+                            help="Ranking before adding review"
+                        )
+                    
+                    with col_rank2:
+                        st.metric(
+                            "New Rank",
+                            f"#{new_rank}",
+                            delta=f"{rank_change:+d} positions" if rank_change != 0 else "No change",
+                            delta_color="normal" if rank_change > 0 else "inverse" if rank_change < 0 else "off",
+                            help="Ranking after adding review"
+                        )
+                    
+                    if rank_change > 0:
+                        st.success(f"🎉 Product moved up {rank_change} position(s) in the ranking!")
+                    elif rank_change < 0:
+                        st.warning(f"⚠️ Product moved down {abs(rank_change)} position(s) in the ranking.")
+                    else:
+                        st.info("ℹ️ Product ranking position unchanged.")
+                    
+                    # Show top 10 with highlighting
+                    st.markdown("**📋 Updated Top 10 Products:**")
+                    
+                    top_10_updated = products_sorted_new.head(10)[['product_id', 'score_trust_weighted', 'avg_rating']].copy()
+                    top_10_updated['score_trust_weighted'] = top_10_updated['score_trust_weighted'].round(3)
+                    top_10_updated['avg_rating'] = top_10_updated['avg_rating'].round(2)
+                    top_10_updated.columns = ['Product ID', 'Trust Score', 'Avg Rating']
+                    top_10_updated.insert(0, 'Rank', range(1, len(top_10_updated) + 1))
+                    
+                    # Highlight the updated product
+                    def highlight_updated_product(row):
+                        if row['Product ID'] == selected_product_dynamic:
+                            return ['background-color: #90EE90'] * len(row)
+                        return [''] * len(row)
+                    
+                    st.dataframe(
+                        top_10_updated.style.apply(highlight_updated_product, axis=1),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    st.info(f"💡 **Product {selected_product_dynamic}** is highlighted in green")
+                    
+                    # Note about persistence
+                    st.warning("""
+                    ⚠️ **Note:** This update is temporary and only affects the current session.
+                    In a production system, changes would be persisted to a database.
+                    Refresh the page to reset to original data.
+                    """)
+                
+                else:
+                    st.info("💡 Check 'Add to dataset' to see the impact on product ranking!")
+
+else:
+    st.info("👆 Please select a product above to begin")
+
+st.divider()
+
+# ============================================================================
+# FOOTER
+# ============================================================================
+
+
 
 # Product selection for the new review
 st.subheader("🎯 Select Product")
