@@ -441,6 +441,14 @@ if len(filtered_reviews) == 0:
     st.error(f"❌ No reviews found for product {product_id}")
     st.stop()
 
+# Safety check: ensure trust_score column exists
+if 'trust_score' not in filtered_reviews.columns:
+    if 'predicted_trust_score' in filtered_reviews.columns:
+        filtered_reviews['trust_score'] = filtered_reviews['predicted_trust_score']
+    else:
+        st.error("❌ Trust score column not found in reviews data")
+        st.stop()
+
 # Sort by trust score (descending)
 filtered_reviews = filtered_reviews.sort_values(by="trust_score", ascending=False)
 
@@ -473,13 +481,18 @@ with col1:
     st.caption("Distribution of trust scores")
 
 with col2:
-    # Rating vs Trust comparison
+    # Rating vs Trust comparison (normalized to same scale)
+    # Trust score is 0-1, so multiply by 5 to compare with rating (1-5)
+    avg_rating = filtered_reviews['rating'].mean()
+    avg_trust_normalized = filtered_reviews['trust_score'].mean() * 5  # Normalize 0-1 to 0-5
+    
     comparison_data = pd.DataFrame({
-        'Rating': [filtered_reviews['rating'].mean()],
-        'Trust Score': [filtered_reviews['trust_score'].mean()]
+        'Rating': [avg_rating],
+        'Trust Score (×5)': [avg_trust_normalized]
     })
     st.bar_chart(comparison_data.T)
-    st.caption("Average Rating vs Trust Score")
+    st.caption("Average Rating vs Trust Score (normalized to 1-5 scale)")
+    st.caption(f"Raw trust score: {filtered_reviews['trust_score'].mean():.3f} (0-1 scale)")
 
 # Trust score filter
 st.subheader("Filter by Trust Score")
