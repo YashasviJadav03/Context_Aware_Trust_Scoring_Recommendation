@@ -176,16 +176,36 @@ st.divider()
 
 st.header("🔍 Product Search")
 
+# Initialize session state variables BEFORE using them
+if 'selected_product' not in st.session_state:
+    st.session_state.selected_product = None
+
+if 'search_query' not in st.session_state:
+    st.session_state.search_query = ""
+
+if 'clear_search_flag' not in st.session_state:
+    st.session_state.clear_search_flag = False
+
+# Handle clear search action
+if st.session_state.clear_search_flag:
+    st.session_state.search_query = ""
+    st.session_state.selected_product = None
+    st.session_state.clear_search_flag = False
+
 # Search input with advanced options
 col1, col2 = st.columns([3, 1])
 with col1:
-    search_query = st.text_input("Search for products:", placeholder="e.g., 'B014EB2ADA' or 'B01' for partial match", key="search_input")
+    search_query = st.text_input(
+        "Search for products:", 
+        value=st.session_state.search_query,
+        placeholder="e.g., 'B014EB2ADA' or 'B01' for partial match", 
+        key="search_input"
+    )
+    # Update session state with current search query
+    if search_query != st.session_state.search_query:
+        st.session_state.search_query = search_query
 with col2:
     search_mode = st.selectbox("Search Mode", ["Smart Search", "Exact Match", "High Trust Only"])
-
-# Initialize selected product in session state if not exists
-if 'selected_product' not in st.session_state:
-    st.session_state.selected_product = None
 
 if search_query:
     # Real search functionality
@@ -243,7 +263,7 @@ if search_query:
             st.warning(f"**No Results** - No products found for '{search_query}'")
     with col2:
         if st.button("🔄 Clear Search", key="clear_search"):
-            st.session_state.selected_product = None
+            st.session_state.clear_search_flag = True
             st.rerun()
     with col3:
         if len(search_results) > 0:
