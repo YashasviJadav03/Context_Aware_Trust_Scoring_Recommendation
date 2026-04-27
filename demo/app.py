@@ -174,13 +174,135 @@ st.divider()
 # PRODUCT SEARCH SIMULATION
 # ============================================================================
 
-st.header("🔍 Product Search Simulation")
-search_query = st.text_input("Search for products:", placeholder="e.g., 'high rated fashion items'")
+st.header("🔍 Product Search")
+
+# Search input with advanced options
+col1, col2 = st.columns([3, 1])
+with col1:
+    search_query = st.text_input("Search for products:", placeholder="e.g., 'B014EB2ADA' or 'B01' for partial match")
+with col2:
+    search_mode = st.selectbox("Search Mode", ["Smart Search", "Exact Match", "High Trust Only"])
 
 if search_query:
-    # Filter products by trust score and show top results
+    # Real search functionality
+    search_query_upper = search_query.upper().strip()
+    
+    # Search methods based on mode
+    search_results = pd.DataFrame()
+    
+    if search_mode == "Exact Match":
+        # Only exact matches
+        search_results = products[products['product_id'].str.upper() == search_query_upper]
+        search_type = "Exact Match"
+        
+    elif search_mode == "High Trust Only":
+        # Search within high trust products only (top 25%)
+        high_trust_threshold = products['score_trust_weighted'].quantile(0.75)
+        high_trust_products = products[products['score_trust_weighted'] >= high_trust_threshold]
+        
+        if search_query_upper in high_trust_products['product_id'].str.upper().values:
+            search_results = high_trust_products[high_trust_products['product_id'].str.upper() == search_query_upper]
+            search_type = "High Trust Exact Match"
+        else:
+            search_results = high_trust_products[high_trust_products['product_id'].str.upper().str.contains(search_query_upper, na=False)].head(10)
+            search_type = "High Trust Products"
+            
+    else:  # Smart Search (default)
+        # 1. Exact product ID match
+        exact_match = products[products['product_id'].str.upper() == search_query_upper]
+        
+        # 2. Partial product ID match (starts with)
+        partial_match = products[products['product_id'].str.upper().str.startswith(search_query_upper)]
+        
+        # 3. Contains search term
+        contains_match = products[products['product_id'].str.upper().str.contains(search_query_upper, na=False)]
+        
+        # Combine results (exact first, then partial, then contains)
+        if len(exact_match) > 0:
+            search_results = exact_match
+            search_type = "Exact Match"
+        elif len(partial_match) > 0:
+            search_results = partial_match.head(10)
+            search_type = "Partial Match"
+        elif len(contains_match) > 0:
+            search_results = contains_match.head(10)
+            search_type = "Contains Match"
+        else:
+            # No matches - suggest similar products
+            search_results = products.nlargest(5, 'score_trust_weighted')
+            search_type = "No matches - Top Suggestions"
+    
+    # Sort search results by trust score (descending)
+    if len(search_results) > 0:
+        search_results = search_results.sort_values('score_trust_weighted', ascending=False)
+    
+    # Display search info
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        st.subheader(f"🔍 Search Results: '{search_query}'")
+        if len(search_results) > 0:
+            st.info(f"**{search_type}** - Found {len(search_results)} product(s)")
+        else:
+            st.warning(f"**No Results** - No products found for '{search_query}'")
+    with col2:
+        if st.button("🔄 Clear Search"):
+            st.rerun()
+    with col3:
+        if len(search_results) > 0:
+            avg_trust = search_results['score_trust_weighted'].mean()
+            st.metric("Avg Trust", f"{avg_trust:.2f}")
+    
+    # Display results
+    if len(search_results) > 0:
+        for idx, (_, product) in enumerate(search_results.iterrows(), 1):
+            # Highlight exact matches and high trust products
+            if product['product_id'].upper() == search_query_upper:
+                highlight = "🎯"
+                badge = "EXACT MATCH"
+            elif product['score_trust_weighted'] >= 4.5:
+                highlight = "⭐"
+                badge = "HIGH TRUST"
+            else:
+                highlight = "📦"
+                badge = ""
+            
+            col1, col2, col3 = st.columns([1, 3, 1])
+            with col1:
+                st.write(f"**#{idx}** {highlight}")
+                if badge:
+                    st.caption(badge)
+            with col2:
+                st.write(f"**Product {product['product_id']}**")
+                st.write(f"Trust Score: {product['score_trust_weighted']:.2f}")
+                
+                # Show additional info for matches
+                if hasattr(product, 'review_count') and pd.notna(product.get('review_count')):
+                    review_count = product['review_count']
+                    avg_rating = product.get('avg_rating', 0)
+                    st.write(f"📊 Reviews: {review_count} | Avg Rating: {avg_rating:.2f}")
+                    
+            with col3:
+                if st.button(f"Analyze", key=f"search_analyze_{idx}"):
+                    st.session_state.selected_product = product['product_id']
+                    st.success(f"✅ Selected!")
+                    st.rerun()
+    
+    # Search suggestions
+    if len(search_results) == 0:
+        st.subheader("💡 Search Suggestions")
+        st.write("Try these search patterns:")
+        st.write("- **Exact ID:** B014EB2ADA")
+        st.write("- **Partial ID:** B01 (shows all products starting with B01)")
+        st.write("- **Switch to 'High Trust Only'** to search within top-rated products")
+    
+    st.divider()
+
+else:
+    # Show top products when no search
+    st.subheader("🏆 Top 10 Recommended Products (Trust-Based)")
+    st.info("💡 Enter a product ID above to search, or browse top products below")
+    
     top_products = products.nlargest(10, 'score_trust_weighted')
-    st.subheader("🏆 Top Recommended Products (Trust-Based)")
     
     for idx, (_, product) in enumerate(top_products.iterrows(), 1):
         col1, col2, col3 = st.columns([1, 2, 1])
@@ -190,10 +312,10 @@ if search_query:
             st.write(f"Product {product['product_id']}")
             st.write(f"Trust Score: {product['score_trust_weighted']:.2f}")
         with col3:
-            if st.button(f"Analyze", key=f"analyze_{idx}"):
-                # Store selected product for analysis
+            if st.button(f"Analyze", key=f"top_analyze_{idx}"):
                 st.session_state.selected_product = product['product_id']
-                st.success(f"Selected Product {product['product_id']} for analysis!")
+                st.success(f"✅ Selected!")
+                st.rerun()
 
 # ============================================================================
 # TRUST VS RATING COMPARISON
@@ -258,12 +380,29 @@ if not product_options:
 
 # Check if a product was selected from search
 default_index = 0
+selected_from_search = False
+
 if 'selected_product' in st.session_state:
     selected_pid = str(st.session_state.selected_product)
+    # First check if it's in the dropdown options
     for i, option in enumerate(product_options):
         if option.startswith(selected_pid):
             default_index = i
+            selected_from_search = True
             break
+    
+    # If not in dropdown, add it as an option if it exists in products
+    if not selected_from_search and selected_pid in products['product_id'].astype(str).values:
+        # Get review count for this product
+        review_count = len(reviews[reviews['product_id'].astype(str) == selected_pid])
+        new_option = f"{selected_pid} ({review_count} reviews) - From Search"
+        product_options.insert(0, new_option)
+        default_index = 0
+        selected_from_search = True
+
+# Show search selection info
+if selected_from_search:
+    st.success(f"🔍 Product {st.session_state.selected_product} selected from search results!")
 
 selected_option = st.selectbox(
     "Select a product to analyze:",
