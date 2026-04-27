@@ -158,6 +158,71 @@ def predict_trust_score(review_text, rating, verified=True, helpful_votes=0,
         return 0.5  # Default score on error
 
 # ============================================================================
+# PRODUCT METADATA LOADING
+# ============================================================================
+
+@st.cache_data
+def load_product_metadata():
+    """Load product metadata (names, images, categories)"""
+    try:
+        metadata = pd.read_csv("demo/product_metadata.csv")
+        return metadata
+    except FileNotFoundError:
+        # Return empty dataframe if metadata not found
+        return pd.DataFrame(columns=['product_id', 'product_name', 'image_url', 'category', 'brand', 'price'])
+
+# Load product metadata
+product_metadata = load_product_metadata()
+
+# ============================================================================
+# HELPER FUNCTION - DISPLAY PRODUCT INFO
+# ============================================================================
+
+def display_product_info(product_id, show_image=True, show_details=True):
+    """Display product information with image and details"""
+    # Get product metadata
+    meta = product_metadata[product_metadata['product_id'] == product_id]
+    
+    if len(meta) > 0:
+        meta_row = meta.iloc[0]
+        
+        if show_image and show_details:
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                # Display product image
+                try:
+                    st.image(meta_row['image_url'], use_container_width=True)
+                except:
+                    st.info("📦 No image available")
+            
+            with col2:
+                # Display product details
+                st.markdown(f"### {meta_row['product_name']}")
+                st.write(f"**Category:** {meta_row['category']}")
+                st.write(f"**Brand:** {meta_row['brand']}")
+                st.write(f"**Price:** {meta_row['price']}")
+                st.write(f"**Product ID:** {product_id}")
+        
+        elif show_image:
+            try:
+                st.image(meta_row['image_url'], width=150)
+            except:
+                st.info("📦")
+        
+        elif show_details:
+            st.write(f"**{meta_row['product_name']}**")
+            st.caption(f"{meta_row['category']} | {meta_row['brand']} | {meta_row['price']}")
+    
+    else:
+        # No metadata available
+        if show_image:
+            st.info("📦 Product Image")
+        if show_details:
+            st.write(f"**Product ID:** {product_id}")
+            st.caption("Fashion Item")
+
+# ============================================================================
 # DATA LOADING - GOOGLE DRIVE VERSION WITH FALLBACK
 # ============================================================================
 
@@ -424,13 +489,22 @@ if search_query:
                 highlight = "📦"
                 badge = ""
             
-            col1, col2, col3 = st.columns([1, 3, 1])
+            col1, col2, col3, col4 = st.columns([1, 1, 3, 1])
             with col1:
                 st.write(f"**#{idx}** {highlight}")
                 if badge:
                     st.caption(badge)
             with col2:
-                st.write(f"**Product {product['product_id']}**")
+                # Display product image (small)
+                display_product_info(product['product_id'], show_image=True, show_details=False)
+            with col3:
+                # Display product name and details
+                meta = product_metadata[product_metadata['product_id'] == product['product_id']]
+                if len(meta) > 0:
+                    st.write(f"**{meta.iloc[0]['product_name']}**")
+                    st.caption(f"{meta.iloc[0]['category']} | {meta.iloc[0]['brand']}")
+                else:
+                    st.write(f"**Product {product['product_id']}**")
                 st.write(f"Trust Score: {product['score_trust_weighted']:.2f}")
                 
                 # Show additional info for matches
@@ -577,6 +651,13 @@ if st.session_state.selected_product:
         avg_rating = current_product['avg_rating'].iloc[0]
         review_count = len(current_reviews)
         
+        # Display product image and info prominently
+        st.subheader("📦 Product Being Analyzed")
+        display_product_info(product_id, show_image=True, show_details=True)
+        
+        st.markdown("---")
+        
+        # Display metrics
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("📦 Product ID", product_id)
@@ -885,10 +966,12 @@ with col_prod1:
     )
 
 with col_prod2:
-    # Show product info
+    # Show product info with image
     if selected_product_for_review:
         prod_info = products[products['product_id'] == selected_product_for_review]
         if len(prod_info) > 0:
+            # Display product image
+            display_product_info(selected_product_for_review, show_image=True, show_details=False)
             st.metric("Current Trust Score", f"{prod_info['score_trust_weighted'].iloc[0]:.2f}")
             st.metric("Total Reviews", int(prod_info['review_count'].iloc[0]) if 'review_count' in prod_info.columns else "N/A")
 

@@ -1,0 +1,21 @@
+product_id,product_name,image_url,category,brand,price
+B01B5BWTNS,Women's Classic Leather Handbag,https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400,Fashion Accessories,LuxeBrand,$89.99
+B014EB2ADA,Men's Casual Sneakers,https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400,Footwear,SportStyle,$65.99
+B0148B7EJ6,Women's Summer Dress,https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400,Women's Clothing,ChicWear,$45.99
+B00RLSCLJM,Unisex Baseball Cap,https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400,Accessories,CapMaster,$19.99
+B0006HB4XE,Men's Leather Belt,https://images.unsplash.com/photo-1624222247344-550fb60583bb?w=400,Accessories,LeatherCraft,$35.99
+B00JKV6EGE,Women's Ankle Boots,https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400,Footwear,BootStyle,$79.99
+B00G8Q7JZ4,Men's Denim Jacket,https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400,Men's Clothing,DenimCo,$69.99
+B0087UIAMK,Women's Sunglasses,https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=400,Accessories,SunShade,$29.99
+B011PLYVCA,Men's Running Shoes,https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400,Footwear,RunFast,$85.99
+B00STV1K9W,Women's Crossbody Bag,https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400,Fashion Accessories,BagStyle,$55.99
+B00D8FJF6O,Men's Polo Shirt,https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=400,Men's Clothing,PoloClassic,$39.99
+B00STV2SI4,Women's Scarf,https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=400,Accessories,ScarfWrap,$24.99
+B018RMQV2S,Men's Wristwatch,https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=400,Accessories,TimeKeeper,$129.99
+B002Z3N1HE,Women's Yoga Pants,https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=400,Women's Clothing,FitWear,$42.99
+B00V903YRQ,Men's Backpack,https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400,Accessories,PackPro,$59.99
+B011P3DFSE,Women's Cardigan,https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400,Women's Clothing,CozyKnit,$49.99
+B00YWSNUO4,Men's Swim Shorts,https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?w=400,Men's Clothing,BeachWear,$32.99
+B00M21O9L6,Women's Diamond Earrings,https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=400,Jewelry,SparkleGem,$199.99
+B0091V6UQM,Men's Formal Shoes,https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=400,Footwear,FormalStep,$95.99
+B000KPIHQ4,Women's Winter Coat,https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=400,Women's Clothing,WarmStyle,$119.99
