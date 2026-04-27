@@ -324,25 +324,25 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("🔴 Traditional Ranking (Rating Only)")
-    rating_ranked = products.nlargest(5, 'avg_rating')[['product_id', 'avg_rating']].copy()
+    rating_ranked = products.nlargest(10, 'avg_rating')[['product_id', 'avg_rating']].copy()
     rating_ranked['avg_rating'] = rating_ranked['avg_rating'].round(2)
     rating_ranked.columns = ['Product ID', 'Avg Rating']
-    rating_ranked.insert(0, 'Rank', range(1, 6))
+    rating_ranked.insert(0, 'Rank', range(1, 11))
     st.dataframe(rating_ranked, hide_index=True)
 
 with col2:
     st.subheader("🟢 Trust-Based Ranking (Our System)")
-    trust_ranked = products.nlargest(5, 'score_trust_weighted')[['product_id', 'score_trust_weighted']].copy()
+    trust_ranked = products.nlargest(10, 'score_trust_weighted')[['product_id', 'score_trust_weighted']].copy()
     trust_ranked['score_trust_weighted'] = trust_ranked['score_trust_weighted'].round(2)
     trust_ranked.columns = ['Product ID', 'Trust Score']
-    trust_ranked.insert(0, 'Rank', range(1, 6))
+    trust_ranked.insert(0, 'Rank', range(1, 11))
     st.dataframe(trust_ranked, hide_index=True)
 
 # Show the difference
-rating_ids = set(products.nlargest(5, 'avg_rating')['product_id'])
-trust_ids = set(products.nlargest(5, 'score_trust_weighted')['product_id'])
+rating_ids = set(products.nlargest(10, 'avg_rating')['product_id'])
+trust_ids = set(products.nlargest(10, 'score_trust_weighted')['product_id'])
 common_products = rating_ids & trust_ids
-st.info(f"Products in both top 5: {len(common_products)}/5 - Shows ranking difference impact!")
+st.info(f"Products in both top 10: {len(common_products)}/10 - Shows ranking difference impact!")
 
 st.divider()
 
@@ -399,7 +399,11 @@ else:
 
     # Extract product_id from selection
     product_id = selected_option.split(' (')[0]
-    st.session_state.selected_product = product_id
+    
+    # Add explicit Analyze button - only set session state on button click
+    if st.button("🔍 Analyze this product", key="analyze_dropdown_product"):
+        st.session_state.selected_product = product_id
+        st.rerun()
 
 # Show prominent indicator of what's being analyzed
 st.markdown("---")
@@ -516,7 +520,8 @@ st.write(f"Showing **{len(filtered_reviews_display)}** reviews (filtered from {l
 
 # Display reviews table with highlighting
 display_df = filtered_reviews_display[['review_text', 'rating', 'trust_score', 'verified', 'low_trust_flag']].copy()
-display_df['review_text'] = display_df['review_text'].astype(str).str[:200] + '...'
+# Smart truncation - only add '...' if text is actually longer than 200 chars
+display_df['review_text'] = display_df['review_text'].astype(str).apply(lambda x: x[:200] + '...' if len(x) > 200 else x)
 display_df['trust_score'] = display_df['trust_score'].round(4)
 
 # Add flag column for highlighting
