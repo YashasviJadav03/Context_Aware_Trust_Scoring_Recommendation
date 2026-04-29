@@ -1175,33 +1175,58 @@ st.subheader("3️⃣ Add New Review")
 if selected_product_dynamic:
     st.markdown("Enter a new review for this product and see how it affects the trust score and ranking!")
     
+    # Demo instructions
+    st.info("💡 **Demo Tip:** Click '🔴 Fake Review' 3 times and watch the trust score drop while the average rating stays high. This demonstrates the system's ability to detect and downweight suspicious reviews!")
+    
     # Review input
     col_input1, col_input2 = st.columns([2, 1])
     
     with col_input1:
-        # Review text
+        # Preset buttons for demo (placed before text area)
+        st.markdown("**Quick Demo Presets:**")
+        col_preset1, col_preset2 = st.columns(2)
+        
+        with col_preset1:
+            if st.button("🟢 Genuine Review", use_container_width=True, help="Load a realistic, trustworthy review"):
+                st.session_state.preset_review_text = "Great product, fits well, fast delivery. Exactly as described. Would buy again."
+                st.session_state.preset_rating = 5
+                st.session_state.preset_verified = True
+                st.rerun()
+        
+        with col_preset2:
+            if st.button("🔴 Fake Review", use_container_width=True, help="Load a suspicious, low-quality review"):
+                st.session_state.preset_review_text = "AMAZING!!! BEST PRODUCT EVER!!!! 5 STARS!!!! BUY NOW!!!!"
+                st.session_state.preset_rating = 5
+                st.session_state.preset_verified = False
+                st.rerun()
+        
+        # Review text with preset value
+        default_text = st.session_state.get('preset_review_text', '')
         new_review_text = st.text_area(
             "Review Text:",
+            value=default_text,
             placeholder="e.g., 'This product exceeded my expectations! Great quality and fast shipping.'",
             height=120,
             key="new_review_text_dynamic",
             help="Enter your review text (minimum 3 characters)"
         )
         
-        # Rating
+        # Rating with preset value
+        default_rating = st.session_state.get('preset_rating', 5)
         new_rating = st.slider(
             "Rating (1-5 stars):",
             min_value=1,
             max_value=5,
-            value=5,
+            value=default_rating,
             key="new_rating_dynamic",
             help="Select your rating"
         )
         
-        # Verified purchase
+        # Verified purchase with preset value
+        default_verified = st.session_state.get('preset_verified', True)
         new_verified = st.checkbox(
             "✓ Verified Purchase",
-            value=True,
+            value=default_verified,
             key="new_verified_dynamic",
             help="Is this a verified purchase?"
         )
@@ -1245,6 +1270,14 @@ if selected_product_dynamic:
     
     # Process prediction
     if predict_button:
+        # Clear preset values after use
+        if 'preset_review_text' in st.session_state:
+            st.session_state.preset_review_text = ''
+        if 'preset_rating' in st.session_state:
+            st.session_state.preset_rating = 5
+        if 'preset_verified' in st.session_state:
+            st.session_state.preset_verified = True
+        
         if not new_review_text or len(new_review_text.strip()) < 3:
             st.error("❌ Please enter a review with at least 3 characters")
         else:
