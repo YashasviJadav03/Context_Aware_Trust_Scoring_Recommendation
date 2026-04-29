@@ -185,13 +185,33 @@ def predict_trust_score(review_text, rating, verified=True, helpful_votes=0,
 
 @st.cache_data
 def load_product_metadata():
-    """Load product metadata (names, images, categories)"""
+    """Load product metadata from Google Drive with caching and fallback
+    
+    Returns:
+        DataFrame: Product metadata with columns: product_id, product_name, image_url, category, brand, price, description
+    """
+    
+    # Google Drive file ID for product_metadata.csv
+    # TODO: Upload demo/product_metadata.csv to Google Drive and update this ID
+    METADATA_FILE_ID = "YOUR_GOOGLE_DRIVE_FILE_ID_HERE"
+    
+    # Try Google Drive first
+    if METADATA_FILE_ID != "YOUR_GOOGLE_DRIVE_FILE_ID_HERE":
+        try:
+            metadata_url = f"https://drive.google.com/uc?id={METADATA_FILE_ID}"
+            metadata = pd.read_csv(metadata_url)
+            return metadata
+        except Exception as e:
+            st.warning(f"⚠️ Could not load metadata from Google Drive: {e}")
+    
+    # Fallback to local file
     try:
         metadata = pd.read_csv("demo/product_metadata.csv")
         return metadata
     except FileNotFoundError:
-        # Return empty dataframe if metadata not found
-        return pd.DataFrame(columns=['product_id', 'product_name', 'image_url', 'category', 'brand', 'price'])
+        st.error("❌ Product metadata file not found. Please ensure demo/product_metadata.csv exists.")
+        # Return empty dataframe with expected columns
+        return pd.DataFrame(columns=['product_id', 'product_name', 'image_url', 'category', 'brand', 'price', 'description'])
 
 # Load product metadata
 product_metadata = load_product_metadata()
