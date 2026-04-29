@@ -745,6 +745,14 @@ st.divider()
 
 st.header("📊 Section 2: Reviews Ranked by Trust")
 
+# Guard: Ensure a product has been selected and analyzed
+if 'selected_product' not in st.session_state or st.session_state.selected_product is None:
+    st.info("👆 Search for a product above and click **Analyze** to see reviews.")
+    st.stop()
+
+# Get product_id from session state
+product_id = str(st.session_state.selected_product)
+
 # Filter reviews for selected product
 filtered_reviews = reviews[reviews['product_id'].astype(str) == str(product_id)].copy()
 
@@ -849,6 +857,14 @@ st.divider()
 # ============================================================================
 
 st.header("⚖️ Section 3: Product Score Comparison")
+
+# Guard: Ensure a product has been selected
+if 'selected_product' not in st.session_state or st.session_state.selected_product is None:
+    st.info("👆 Search for a product above and click **Analyze** to see comparison.")
+    st.stop()
+
+# Get product_id from session state
+product_id = str(st.session_state.selected_product)
 
 # Get product data
 prod = products[products['product_id'].astype(str) == str(product_id)]
