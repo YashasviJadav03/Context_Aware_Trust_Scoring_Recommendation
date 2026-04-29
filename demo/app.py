@@ -212,11 +212,15 @@ def display_product_info(product_id, show_image=True, show_details=True):
             col1, col2 = st.columns([1, 2])
             
             with col1:
-                # Display product image
-                try:
-                    st.image(meta_row['image_url'], use_container_width=True)
-                except:
-                    st.info("📦 No image available")
+                # Display product image - handle missing/empty URLs
+                img_url = meta_row.get('image_url', '')
+                if img_url and isinstance(img_url, str) and img_url.startswith('http'):
+                    try:
+                        st.image(img_url, use_container_width=True)
+                    except:
+                        st.markdown("📦 **No image available**")
+                else:
+                    st.markdown("📦 **No image available**")
             
             with col2:
                 # Display product details
@@ -225,11 +229,21 @@ def display_product_info(product_id, show_image=True, show_details=True):
                 st.write(f"**Brand:** {meta_row['brand']}")
                 st.write(f"**Price:** {meta_row['price']}")
                 st.write(f"**Product ID:** {product_id}")
+                
+                # Display description if available
+                if 'description' in meta_row and meta_row['description'] and str(meta_row['description']) != 'nan':
+                    desc = str(meta_row['description'])[:150]
+                    st.caption(f"📝 {desc}{'...' if len(str(meta_row['description'])) > 150 else ''}")
         
         elif show_image:
-            try:
-                st.image(meta_row['image_url'], width=150)
-            except:
+            # Display image only - handle missing/empty URLs
+            img_url = meta_row.get('image_url', '')
+            if img_url and isinstance(img_url, str) and img_url.startswith('http'):
+                try:
+                    st.image(img_url, width=150)
+                except:
+                    st.info("📦")
+            else:
                 st.info("📦")
         
         elif show_details:

@@ -59,6 +59,12 @@ if 'brand' in meta.columns:
 if 'price' in meta.columns:
     available_cols.append('price')
 
+# Add description/feature field if available
+if 'feature' in meta.columns:
+    available_cols.append('feature')
+elif 'description' in meta.columns:
+    available_cols.append('description')
+
 print(f"\n📋 Using columns: {available_cols}")
 
 # Select available columns
@@ -149,6 +155,32 @@ if 'price' in meta_clean.columns:
 else:
     meta_clean['price'] = 'N/A'
 
+# Process descriptions/features
+if 'feature' in meta_clean.columns:
+    def extract_description(x):
+        """Extract description from feature list"""
+        try:
+            if x is None or pd.isna(x):
+                return ''
+            # If it's a list, join the features
+            if hasattr(x, '__iter__') and not isinstance(x, str):
+                features = [str(f) for f in x if f]
+                if features:
+                    return ' | '.join(features[:3])  # Take first 3 features
+                return ''
+            # If it's a string, return as is
+            return str(x) if x else ''
+        except:
+            return ''
+    
+    meta_clean['description'] = meta_clean['feature'].apply(extract_description)
+    meta_clean = meta_clean.drop(columns=['feature'])
+elif 'description' in meta_clean.columns:
+    meta_clean['description'] = meta_clean['description'].fillna('')
+    meta_clean['description'] = meta_clean['description'].astype(str)
+else:
+    meta_clean['description'] = ''
+
 # Remove duplicates (keep first occurrence)
 meta_clean = meta_clean.drop_duplicates(subset=['product_id'], keep='first')
 
@@ -180,7 +212,8 @@ if len(unmatched_ids) > 0:
             'image_url': 'https://images.unsplash.com/photo-1492707892479-7bc8d5a4ee93?w=400',
             'category': 'Fashion',
             'brand': 'Unknown Brand',
-            'price': 'N/A'
+            'price': 'N/A',
+            'description': ''
         })
     
     fallback_df = pd.DataFrame(fallback_records)
@@ -189,7 +222,7 @@ else:
     final_metadata = matched
 
 # Ensure all required columns exist
-required_cols = ['product_id', 'product_name', 'image_url', 'category', 'brand', 'price']
+required_cols = ['product_id', 'product_name', 'image_url', 'category', 'brand', 'price', 'description']
 for col in required_cols:
     if col not in final_metadata.columns:
         if col == 'product_name':
@@ -202,6 +235,8 @@ for col in required_cols:
             final_metadata[col] = 'Unknown Brand'
         elif col == 'price':
             final_metadata[col] = 'N/A'
+        elif col == 'description':
+            final_metadata[col] = ''
 
 # Reorder columns
 final_metadata = final_metadata[required_cols]
@@ -219,6 +254,7 @@ print(f"Products with real names: {(final_metadata['product_name'] != 'Fashion I
 print(f"Products with real images: {(~final_metadata['image_url'].str.contains('unsplash')).sum()} ({(~final_metadata['image_url'].str.contains('unsplash')).sum()/len(final_metadata)*100:.2f}%)")
 print(f"Products with brands: {(final_metadata['brand'] != 'Unknown Brand').sum()} ({(final_metadata['brand'] != 'Unknown Brand').sum()/len(final_metadata)*100:.2f}%)")
 print(f"Products with prices: {(final_metadata['price'] != 'N/A').sum()} ({(final_metadata['price'] != 'N/A').sum()/len(final_metadata)*100:.2f}%)")
+print(f"Products with descriptions: {(final_metadata['description'] != '').sum()} ({(final_metadata['description'] != '').sum()/len(final_metadata)*100:.2f}%)")
 
 # Show category distribution
 print(f"\n📊 Category Distribution:")
@@ -234,5 +270,7 @@ for _, row in real_products.iterrows():
     print(f"  Brand: {row['brand']}")
     print(f"  Price: {row['price']}")
     print(f"  Image: {row['image_url'][:60]}...")
+    if row['description']:
+        print(f"  Description: {row['description'][:100]}...")
 
 print(f"\n✅ Done! Real Amazon product metadata extracted.")
