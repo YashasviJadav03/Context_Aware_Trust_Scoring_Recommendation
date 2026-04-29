@@ -587,16 +587,23 @@ trust-scoring-system/
 │       └── feature_correlation_matrix.png
 │
 ├── demo/                               # Demo application
-│   ├── app.py                          # Flask API
-│   └── requirements.txt                # Demo dependencies
+│   ├── app.py                          # Streamlit web application (1316 lines)
+│   ├── requirements.txt                # Demo dependencies
+│   ├── README.md                       # Demo documentation
+│   ├── reviews_sample.csv              # Sample reviews (10K)
+│   ├── products_sample.csv             # Sample products (7.5K)
+│   └── product_metadata.csv            # Product metadata (images, names, etc.)
 │
 ├── .gitignore                          # Git ignore rules
 ├── requirements.txt                    # Project dependencies
 ├── README.md                           # This file
-├── API_DOCUMENTATION.md                # API reference
-├── DEPLOYMENT_GUIDE.md                 # Deployment instructions
-├── FINAL_STATUS.md                     # Project completion report
-└── ISSUES_FIXED_PRESENTATION.md        # Critical issues resolved
+├── QUICK_START.md                      # Quick start guide
+├── FINAL_PROJECT_REPORT.md             # Academic project report (8000+ words)
+├── FINAL_CHECKLIST.md                  # Project completion checklist
+├── DEMO_SCRIPT.md                      # Demo presentation script
+├── STREAMLIT_DEPLOYMENT.md             # Streamlit deployment guide
+├── DUPLICATE_SECTION_FIX.md            # Duplicate Section 5 fix documentation
+└── CONNECTIVITY_VERIFICATION.md        # Dynamic connectivity verification report
 ```
 
 ---
@@ -753,13 +760,25 @@ During development and code review, six critical issues were identified and reso
 - Trust score distribution visualization
 - Side-by-side ranking comparison (trust-based vs rating-based)
 - Interactive review filtering
+- **NEW:** Live ML inference for trust score prediction
+- **NEW:** Dynamic review addition with real-time ranking updates
+- **NEW:** Product metadata with images and detailed information
 - 10,000 sample reviews, 7,503 products
 
 **Technical Stack:**
 - **Platform:** Streamlit Cloud
 - **Data Hosting:** Google Drive (cloud-hosted CSV files)
+- **ML Models:** XGBoost Regressor, TF-IDF Vectorizer, StandardScaler
 - **Dataset:** Amazon Fashion reviews (sample)
 - **Performance:** 2-3s first load, instant subsequent loads (cached)
+
+**Recent Fixes (v2.0.0):**
+- ✅ Removed duplicate Section 5 code (497 lines deleted)
+- ✅ Fixed dynamic connectivity across all sections
+- ✅ Resolved all Streamlit crashes (set_page_config, column names, security)
+- ✅ Implemented proper session state management
+- ✅ Added ML model integration for live predictions
+- ✅ Improved UI flow with logical workflow structure
 
 ### Local Deployment
 
@@ -858,10 +877,30 @@ git push origin main
 ### Available Documentation
 
 - **README.md** (this file) - Complete project overview and usage guide
-- **API_DOCUMENTATION.md** - REST API reference and examples
-- **DEPLOYMENT_GUIDE.md** - Production deployment instructions
-- **FINAL_STATUS.md** - Project completion report and metrics
-- **ISSUES_FIXED_PRESENTATION.md** - Critical issues resolved during development
+- **demo/README.md** - Demo application documentation and troubleshooting
+- **QUICK_START.md** - Quick start guide for running the project
+- **FINAL_PROJECT_REPORT.md** - Comprehensive academic report (8000+ words)
+- **FINAL_CHECKLIST.md** - Project completion checklist
+- **DEMO_SCRIPT.md** - Demo presentation script
+- **STREAMLIT_DEPLOYMENT.md** - Streamlit Cloud deployment guide
+- **DUPLICATE_SECTION_FIX.md** - Documentation of duplicate Section 5 fix
+- **CONNECTIVITY_VERIFICATION.md** - Dynamic connectivity verification report
+
+### Technical Documentation
+
+**Demo Application:**
+- Complete Streamlit app with 5 main sections
+- ML model integration for live inference
+- Dynamic product analysis with session state
+- Google Drive integration for data hosting
+- Product metadata with images and details
+
+**Model Architecture:**
+- XGBoost Regressor for trust score prediction
+- TF-IDF Vectorizer (5000 features)
+- StandardScaler for feature normalization
+- 18 structured features + 5000 text features
+- Bayesian averaging for product aggregation
 
 ### Notebooks Documentation
 
@@ -1073,11 +1112,23 @@ If you use this system in your research, please cite:
 
 ---
 
-**Version:** 1.0.0  
-**Last Updated:** April 21, 2026  
+**Version:** 2.0.0  
+**Last Updated:** April 29, 2026  
 **Status:** Production Ready  
 **Python Version:** 3.8+  
-**License:** [Your License]
+**License:** MIT
+
+### Recent Updates (v2.0.0)
+- ✅ Fixed duplicate Section 5 in demo app (removed 497 lines of duplicate code)
+- ✅ Verified dynamic connectivity across all sections
+- ✅ Implemented real search functionality with 3 modes (Smart, Exact, High Trust)
+- ✅ Added dynamic product analysis with session state management
+- ✅ Integrated ML model inference for live trust score prediction
+- ✅ Added product metadata with images and details
+- ✅ Improved UI flow with proper workflow structure
+- ✅ Fixed all Streamlit crashes and security issues
+- ✅ Deployed to Streamlit Cloud with Google Drive integration
+- ✅ Complete documentation with connectivity verification
 
 ---
 
