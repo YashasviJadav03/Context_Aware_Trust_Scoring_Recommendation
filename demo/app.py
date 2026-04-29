@@ -1031,43 +1031,24 @@ st.divider()
 
 st.subheader("1️⃣ Product Information")
 
-# Product selection
-col_select1, col_select2 = st.columns([3, 1])
-
-with col_select1:
-    # Get list of products for selection with names
-    product_list_display = []
-    product_id_to_display = {}  # Map display string back to product_id
+# Use the product already selected in the search section
+if 'selected_product' in st.session_state and st.session_state.selected_product:
+    selected_product_dynamic = str(st.session_state.selected_product)
     
-    for pid in products['product_id'].unique().tolist()[:100]:  # Top 100 products
-        meta_row = product_metadata[product_metadata['product_id'] == pid]
-        if len(meta_row) > 0:
-            name = meta_row.iloc[0]['product_name'][:40]  # Truncate to 40 chars
-            display_text = f"{pid} — {name}"
-            product_list_display.append(display_text)
-            product_id_to_display[display_text] = pid
-        else:
-            product_list_display.append(pid)
-            product_id_to_display[pid] = pid
+    # Get product name for display
+    meta_row = product_metadata[product_metadata['product_id'] == selected_product_dynamic]
+    product_name = meta_row.iloc[0]['product_name'] if len(meta_row) > 0 else selected_product_dynamic
     
-    selected_display = st.selectbox(
-        "Select a product to analyze:",
-        options=product_list_display,
-        key="dynamic_product_selector",
-        help="Choose a product to view details and add a review"
-    )
-    
-    # Extract the actual product_id from the display string
-    selected_product_dynamic = product_id_to_display.get(selected_display, selected_display.split(' — ')[0] if ' — ' in selected_display else selected_display)
-
-with col_select2:
-    if st.button("🔄 Reset", key="reset_dynamic"):
-        st.rerun()
+    st.info(f"📦 **Analyzing:** {product_name} (ID: {selected_product_dynamic})")
+    st.caption("💡 To analyze a different product, use the search section above")
+else:
+    # Fallback to first product if nothing selected
+    selected_product_dynamic = str(products['product_id'].iloc[0])
+    st.warning("⚠️ No product selected. Using first product as default. Please use the search section above to select a specific product.")
 
 # Display full product information
-if selected_product_dynamic:
-    st.markdown("---")
-    display_product_info(selected_product_dynamic, show_image=True, show_details=True)
+st.markdown("---")
+display_product_info(selected_product_dynamic, show_image=True, show_details=True)
 
 st.divider()
 
