@@ -1068,12 +1068,24 @@ if selected_product_dynamic:
     # Get original product data for comparison
     current_prod = products[products['product_id'] == selected_product_dynamic]
     
+    # Initialize current_rank with default value (prevents NameError if product not found)
+    current_rank = len(products)  # Default to last position
+    
     if len(current_prod) > 0:
         # Calculate current metrics (with added reviews if any)
+        added_count_for_product = len([r for r in st.session_state.added_reviews if r['product_id'] == selected_product_dynamic])
+        
         if len(current_revs) > 0:
             current_avg_rating = current_revs['rating'].mean()
-            current_trust_score = (current_revs['rating'] * current_revs['trust_score']).sum() / current_revs['trust_score'].sum()
             current_review_count = len(current_revs)
+            
+            # Use CSV value for baseline, only recalculate if reviews have been added
+            if added_count_for_product > 0:
+                # Recalculate trust score with added reviews
+                current_trust_score = (current_revs['rating'] * current_revs['trust_score']).sum() / current_revs['trust_score'].sum()
+            else:
+                # Use pre-computed CSV value (includes Bayesian smoothing from notebook)
+                current_trust_score = current_prod['score_trust_weighted'].iloc[0]
         else:
             current_avg_rating = current_prod['avg_rating'].iloc[0]
             current_trust_score = current_prod['score_trust_weighted'].iloc[0]
@@ -1085,7 +1097,6 @@ if selected_product_dynamic:
         original_review_count = len(reviews[reviews['product_id'] == selected_product_dynamic])
         
         # Calculate deltas
-        added_count_for_product = len([r for r in st.session_state.added_reviews if r['product_id'] == selected_product_dynamic])
         rating_delta = current_avg_rating - original_avg_rating if added_count_for_product > 0 else 0
         trust_delta = current_trust_score - original_trust_score if added_count_for_product > 0 else 0
         
@@ -1177,7 +1188,6 @@ if selected_product_dynamic:
             value=default_text,
             placeholder="e.g., 'This product exceeded my expectations! Great quality and fast shipping.'",
             height=120,
-            key="new_review_text_dynamic",
             help="Enter your review text (minimum 3 characters)"
         )
         
@@ -1188,7 +1198,6 @@ if selected_product_dynamic:
             min_value=1,
             max_value=5,
             value=default_rating,
-            key="new_rating_dynamic",
             help="Select your rating"
         )
         
@@ -1197,7 +1206,6 @@ if selected_product_dynamic:
         new_verified = st.checkbox(
             "✓ Verified Purchase",
             value=default_verified,
-            key="new_verified_dynamic",
             help="Is this a verified purchase?"
         )
     
