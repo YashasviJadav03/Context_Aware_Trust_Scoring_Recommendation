@@ -9,6 +9,7 @@ import numpy as np
 import joblib
 from datetime import datetime
 import re
+from textblob import TextBlob
 
 # ============================================================================
 # PAGE CONFIGURATION - MUST BE FIRST STREAMLIT COMMAND
@@ -83,8 +84,14 @@ def extract_features_for_review(review_text, rating, verified, helpful_votes=0,
     exclamation_count = review_text.count('!')
     question_count = review_text.count('?')
     
-    # Sentiment (simplified - using exclamation as proxy)
-    sentiment_score = min(exclamation_count * 0.2, 1.0) if rating >= 4 else -min(exclamation_count * 0.2, 1.0)
+    # Sentiment analysis using TextBlob (proper NLP-based sentiment)
+    try:
+        blob = TextBlob(review_text)
+        sentiment_score = blob.sentiment.polarity  # Returns -1 to +1
+    except:
+        # Fallback to simple heuristic if TextBlob fails
+        sentiment_score = 0.5 if rating >= 4 else -0.5
+    
     sentiment_extreme = abs(sentiment_score)
     
     # Repetition ratio (simplified)
