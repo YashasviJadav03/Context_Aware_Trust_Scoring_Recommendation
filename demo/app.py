@@ -1016,6 +1016,41 @@ with col_info2:
             st.success("✅ All added reviews cleared!")
             st.rerun()
 
+# Show Review History table if reviews have been added
+if len(st.session_state.added_reviews) > 0:
+    st.markdown("### 📋 Review History (This Session)")
+    
+    # Create DataFrame from added reviews
+    history_data = []
+    for i, review in enumerate(st.session_state.added_reviews, 1):
+        history_data.append({
+            '#': i,
+            'Review Text': review['review_text'][:50] + '...' if len(review['review_text']) > 50 else review['review_text'],
+            'Rating': '⭐' * int(review['rating']),
+            'Trust Score': f"{review['trust_score']:.3f}",
+            'Verified': '✓' if review['verified'] else '✗',
+            'Product': review['product_id'][:10] + '...'
+        })
+    
+    history_df = pd.DataFrame(history_data)
+    
+    # Display table
+    st.dataframe(
+        history_df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            '#': st.column_config.NumberColumn('#', width='small'),
+            'Review Text': st.column_config.TextColumn('Review Text', width='large'),
+            'Rating': st.column_config.TextColumn('Rating', width='small'),
+            'Trust Score': st.column_config.TextColumn('Trust Score', width='small'),
+            'Verified': st.column_config.TextColumn('Verified', width='small'),
+            'Product': st.column_config.TextColumn('Product', width='medium')
+        }
+    )
+    
+    st.caption(f"💡 Showing all {len(st.session_state.added_reviews)} review(s) added in this session. Use the table above to track your demo scenario.")
+
 st.divider()
 
 # ============================================================================
