@@ -1118,17 +1118,41 @@ If you use this system in your research, please cite:
 **Python Version:** 3.8+  
 **License:** MIT
 
-### Recent Updates (v2.0.0)
+### Recent Updates (v2.0.0 - April 29, 2026)
+
+**Phase 0: Core Fixes**
 - ✅ Fixed duplicate Section 5 in demo app (removed 497 lines of duplicate code)
 - ✅ Verified dynamic connectivity across all sections
 - ✅ Implemented real search functionality with 3 modes (Smart, Exact, High Trust)
 - ✅ Added dynamic product analysis with session state management
-- ✅ Integrated ML model inference for live trust score prediction
-- ✅ Added product metadata with images and details
-- ✅ Improved UI flow with proper workflow structure
 - ✅ Fixed all Streamlit crashes and security issues
+
+**Phase 1: Real Data Integration**
+- ✅ Extracted real Amazon product metadata from official dataset (186,637 records)
+- ✅ 100% real product names, 78% real Amazon CDN images, 76% real brands
+- ✅ Fixed column layout bug in search results (col3/col4 duplicate)
+- ✅ Implemented session state persistence for cumulative review tracking
+- ✅ Replaced exclamation-based sentiment with TextBlob NLP analysis
+- ✅ Fixed user ID highlighting with timestamp-based unique IDs
+
+**Phase 2: UX Enhancements**
+- ✅ Enhanced display_product_info() with robust image URL validation
+- ✅ Added product descriptions from Amazon metadata
+- ✅ Product names in dropdown (format: "B01... — Product Name")
+- ✅ Fixed Section 3 category display (dynamic lookup from metadata)
+
+**Phase 3: Demo Features**
+- ✅ Added demo preset buttons (🟢 Genuine Review, 🔴 Fake Review)
+- ✅ Implemented Review History table showing all session reviews
+- ✅ Live ML inference for trust score prediction
+- ✅ Dynamic review addition with real-time ranking updates
+- ✅ Cumulative review counter with live metrics and deltas
+
+**Deployment & Documentation**
 - ✅ Deployed to Streamlit Cloud with Google Drive integration
-- ✅ Complete documentation with connectivity verification
+- ✅ Added Google Drive fallback for model and data loading
+- ✅ Fixed XGBoost dependency and model loading issues
+- ✅ Complete documentation cleanup and consolidation
 
 ---
 

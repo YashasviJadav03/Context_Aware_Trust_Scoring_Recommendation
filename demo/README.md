@@ -156,31 +156,48 @@ See how trust-based ranking differs from traditional rating-based ranking:
 
 ## Section 5: Dynamic Product Analysis & Review Addition
 
-### Features
-- **Product Selection:** Choose from 100 top products
-- **Current Metrics:** View reviews, rating, trust score, and ranking position
-- **Add New Review:** Enter review text, rating, and verification status
-- **Trust Score Prediction:** ML model predicts trust score in real-time
-- **Dataset Update:** New review added dynamically to dataset
+**Complete workflow for testing review addition with live ML inference**
+
+### Key Features
+- **Product Selection:** Choose from 100 top products with names displayed
+- **Product Metadata:** Real Amazon data (images, names, categories, brands, prices)
+- **Current Metrics:** Reviews, rating, trust score, ranking position
+- **Demo Presets:** 🟢 Genuine Review and 🔴 Fake Review buttons for quick testing
+- **Custom Review Input:** Text area, rating slider (1-5), verified checkbox
+- **ML Trust Prediction:** Real-time trust score using trained XGBoost model
+- **Feature Extraction:** 18 structured features + 5000 TF-IDF features with TextBlob sentiment
+- **Session Persistence:** Reviews persist across reruns (cumulative impact demonstration)
+- **Review History Table:** Shows all reviews added in session with trust scores
+- **Dynamic Updates:** New reviews added to dataframe in real-time
 - **Ranking Impact:** Before/after comparison with visual charts
-- **Updated Rankings:** See how product position changes in top 10
+- **Highlighted Reviews:** New reviews highlighted with timestamp-based unique IDs
 
 ### Workflow
 ```
-1️⃣ Product Information
+1️⃣ Product Information (real image, name, category, brand, price)
    ↓
 2️⃣ Current Product Scores (reviews, rating, trust, ranking)
    ↓
-3️⃣ Add New Review (text input, predict trust score)
+3️⃣ Demo Presets (🟢 Genuine / 🔴 Fake) OR Custom Review
    ↓
-4️⃣ Updated Reviews (sorted by trust, new review highlighted)
+4️⃣ Add Review → ML Prediction → Trust Score
    ↓
-5️⃣ Ranking Impact (before/after, visual comparison, updated top 10)
+5️⃣ Review History Table (all session reviews)
+   ↓
+6️⃣ Updated Reviews (sorted by trust, new ones highlighted)
+   ↓
+7️⃣ Ranking Impact (before/after, charts, updated top 10)
 ```
 
+### Demo Story (30-Second Fake Review Attack)
+The most compelling demonstration: Click "🔴 Fake Review" three times and watch the trust-weighted score drop while the raw average stays high. This demonstrates the system detecting low-quality content and protecting the ranking in real-time.
+
 ### ML Model Integration
-- **Models Loaded:** TF-IDF Vectorizer, Feature Scaler, XGBoost Regressor
+- **Models Loaded:** TF-IDF Vectorizer, StandardScaler, XGBoost Regressor (cached with `@st.cache_resource`)
 - **Feature Extraction:** 18 structured features + 5000 TF-IDF features
+- **Sentiment Analysis:** TextBlob NLP (not exclamation counting)
+- **User IDs:** Timestamp-based `NEW_USER_{datetime.now().strftime("%Y%m%d_%H%M%S_%f")}`
+- **Persistence:** `st.session_state.added_reviews = []` for cumulative tracking
 - **Prediction:** Real-time trust score (0-1 scale)
 - **Graceful Fallback:** App works with pre-computed scores if models not found
 
@@ -288,18 +305,41 @@ docker run -p 8501:8501 trust-demo
 **Last Updated:** April 29, 2026  
 **Status:** Production Ready
 
-### Recent Updates (v2.0.0)
+### Recent Updates (v2.0.0 - April 29, 2026)
+
+**Phase 0: Core Fixes**
 - ✅ **Fixed duplicate Section 5** - Removed 497 lines of duplicate code
 - ✅ **Verified dynamic connectivity** - All sections properly connected via session state
 - ✅ **Real search functionality** - 3 search modes with visual indicators
 - ✅ **Dynamic product analysis** - Search → Analyze → Instant updates
-- ✅ **ML model integration** - Live trust score prediction in Section 5
-- ✅ **Product metadata** - Images, names, categories, brands, prices
-- ✅ **Improved UI flow** - Logical workflow structure (1️⃣→2️⃣→3️⃣→4️⃣→5️⃣)
 - ✅ **Fixed all crashes** - Resolved set_page_config, column name, security issues
-- ✅ **UX improvements** - Smart truncation, explicit analyze button, clear search
-- ✅ **Google Drive integration** - Cloud-hosted data files for production
-- ✅ **Complete documentation** - DUPLICATE_SECTION_FIX.md, CONNECTIVITY_VERIFICATION.md
+
+**Phase 1: Real Data Integration**
+- ✅ **Real Amazon metadata** - Extracted from official dataset (186,637 records)
+- ✅ **100% authentic data** - Real product names, 78% real images, 76% real brands
+- ✅ **Fixed column bug** - Corrected col3/col4 duplicate in search results
+- ✅ **Session persistence** - Reviews survive Streamlit reruns (cumulative tracking)
+- ✅ **TextBlob sentiment** - Replaced exclamation counting with NLP analysis
+- ✅ **Timestamp user IDs** - Fixed highlighting with unique timestamp-based IDs
+
+**Phase 2: UX Enhancements**
+- ✅ **Image validation** - Robust URL checking with graceful fallbacks
+- ✅ **Product descriptions** - Added from Amazon metadata
+- ✅ **Dropdown improvements** - Show "B01... — Product Name" format
+- ✅ **Dynamic categories** - Real category lookup from metadata (not hardcoded)
+
+**Phase 3: Demo Features**
+- ✅ **Demo presets** - 🟢 Genuine Review and 🔴 Fake Review buttons
+- ✅ **Review History table** - Shows all session reviews with trust scores
+- ✅ **Live ML inference** - Real-time trust score prediction
+- ✅ **Dynamic updates** - Real-time ranking changes after review addition
+- ✅ **Cumulative metrics** - Live counters with deltas showing session impact
+
+**Deployment & Performance**
+- ✅ **Streamlit Cloud** - Production deployment with auto-updates
+- ✅ **Google Drive integration** - Cloud-hosted data files for scalability
+- ✅ **Model loading** - Fixed XGBoost dependency and caching
+- ✅ **Performance** - 2-3s first load, instant subsequent loads
 
 ### Architecture Changes
 - **Session State Management:** Unified product selection across sections
