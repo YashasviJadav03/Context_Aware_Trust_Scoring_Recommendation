@@ -416,6 +416,9 @@ if 'search_query' not in st.session_state:
 if 'clear_search_flag' not in st.session_state:
     st.session_state.clear_search_flag = False
 
+if 'added_reviews' not in st.session_state:
+    st.session_state.added_reviews = []
+
 # Handle clear search action
 if st.session_state.clear_search_flag:
     st.session_state.search_query = ""
@@ -975,6 +978,18 @@ st.markdown("""
 **Complete workflow:** Select a product → View current metrics → Add a new review → See instant impact on rankings!
 """)
 
+# Show added reviews count and reset button
+col_info1, col_info2 = st.columns([3, 1])
+with col_info1:
+    if len(st.session_state.added_reviews) > 0:
+        st.info(f"📝 **{len(st.session_state.added_reviews)} review(s) added** in this session (cumulative impact shown)")
+with col_info2:
+    if len(st.session_state.added_reviews) > 0:
+        if st.button("🗑️ Clear All Added Reviews", key="clear_added_reviews", help="Reset to original dataset"):
+            st.session_state.added_reviews = []
+            st.success("✅ All added reviews cleared!")
+            st.rerun()
+
 st.divider()
 
 # ============================================================================
@@ -1015,14 +1030,37 @@ st.divider()
 st.subheader("2️⃣ Current Product Scores")
 
 if selected_product_dynamic:
-    # Get current product data
+    # Build current reviews including any added reviews from session state
+    if st.session_state.added_reviews:
+        added_df = pd.DataFrame(st.session_state.added_reviews)
+        current_revs_with_added = pd.concat([reviews, added_df], ignore_index=True)
+        current_revs = current_revs_with_added[current_revs_with_added['product_id'] == selected_product_dynamic]
+    else:
+        current_revs = reviews[reviews['product_id'] == selected_product_dynamic]
+    
+    # Get original product data for comparison
     current_prod = products[products['product_id'] == selected_product_dynamic]
-    current_revs = reviews[reviews['product_id'] == selected_product_dynamic]
     
     if len(current_prod) > 0:
-        current_avg_rating = current_prod['avg_rating'].iloc[0]
-        current_trust_score = current_prod['score_trust_weighted'].iloc[0]
-        current_review_count = len(current_revs)
+        # Calculate current metrics (with added reviews if any)
+        if len(current_revs) > 0:
+            current_avg_rating = current_revs['rating'].mean()
+            current_trust_score = (current_revs['rating'] * current_revs['trust_score']).sum() / current_revs['trust_score'].sum()
+            current_review_count = len(current_revs)
+        else:
+            current_avg_rating = current_prod['avg_rating'].iloc[0]
+            current_trust_score = current_prod['score_trust_weighted'].iloc[0]
+            current_review_count = 0
+        
+        # Get original metrics for delta calculation
+        original_avg_rating = current_prod['avg_rating'].iloc[0]
+        original_trust_score = current_prod['score_trust_weighted'].iloc[0]
+        original_review_count = len(reviews[reviews['product_id'] == selected_product_dynamic])
+        
+        # Calculate deltas
+        added_count_for_product = len([r for r in st.session_state.added_reviews if r['product_id'] == selected_product_dynamic])
+        rating_delta = current_avg_rating - original_avg_rating if added_count_for_product > 0 else 0
+        trust_delta = current_trust_score - original_trust_score if added_count_for_product > 0 else 0
         
         # Display current metrics
         col1, col2, col3, col4 = st.columns(4)
@@ -1031,14 +1069,35 @@ if selected_product_dynamic:
             st.metric(
                 "📊 Total Reviews",
                 current_review_count,
-                help="Number of reviews for this product"
+                delta=f"+{added_count_for_product}" if added_count_for_product > 0 else None,
+                help="Number of reviews for this product (including added reviews)"
             )
         
         with col2:
             st.metric(
                 "⭐ Average Rating",
                 f"{current_avg_rating:.2f}",
-                help="Simple average of all ratings"
+                delta=f"{rating_delta:+.2f}" if added_count_for_product > 0 else None,
+                delta_color="normal" if rating_delta >= 0 else "inverse",
+                help="Simple average of all ratings (including added reviews)"
+            )
+        
+        with col3:
+            st.metric(
+                "🧠 Trust Score",
+                f"{current_trust_score:.2f}",
+                delta=f"{trust_delta:+.2f}" if added_count_for_product > 0 else None,
+                delta_color="normal" if trust_delta >= 0 else "inverse",
+                help="Trust-weighted score (our system, including added reviews)"
+            )
+        
+        with col4:
+            score_diff = current_trust_score - current_avg_rating
+            st.metric(
+                "📈 Difference",
+                f"{score_diff:+.2f}",
+                help="Trust score - Average rating"
+            )
             )
         
         with col3:
@@ -1214,7 +1273,7 @@ if selected_product_dynamic:
                     
                     # Create new review row
                     new_review_row = {
-                        'user_id': f'NEW_USER_{len(reviews)}',
+                        'user_id': f'NEW_USER_{len(reviews) + len(st.session_state.added_reviews)}',
                         'product_id': selected_product_dynamic,
                         'rating': new_rating,
                         'review_text': new_review_text,
@@ -1224,25 +1283,35 @@ if selected_product_dynamic:
                         'predicted_trust_score': predicted_trust
                     }
                     
-                    # Add to reviews dataframe
-                    new_review_df = pd.DataFrame([new_review_row])
-                    reviews_updated = pd.concat([reviews, new_review_df], ignore_index=True)
+                    # Add to session state for persistence
+                    st.session_state.added_reviews.append(new_review_row)
+                    
+                    # Build updated reviews dataframe with all added reviews
+                    if st.session_state.added_reviews:
+                        added_df = pd.DataFrame(st.session_state.added_reviews)
+                        reviews_updated = pd.concat([reviews, added_df], ignore_index=True)
+                    else:
+                        reviews_updated = reviews.copy()
                     
                     # Get updated product reviews
                     product_reviews_updated = reviews_updated[reviews_updated['product_id'] == selected_product_dynamic]
                     product_reviews_updated = product_reviews_updated.sort_values('trust_score', ascending=False)
                     
-                    # Show updated review count
-                    st.info(f"📊 Total reviews for this product: **{len(product_reviews_updated)}** (including your new review)")
+                    # Show updated review count with cumulative count
+                    added_count = len([r for r in st.session_state.added_reviews if r['product_id'] == selected_product_dynamic])
+                    st.info(f"📊 Total reviews for this product: **{len(product_reviews_updated)}** (including {added_count} new review{'s' if added_count > 1 else ''})")
                     
                     # Display top reviews
                     st.markdown("**Top 5 Reviews by Trust Score:**")
                     
                     top_reviews = product_reviews_updated.head(5)
                     
+                    # Get list of new user IDs for highlighting
+                    new_user_ids = [r['user_id'] for r in st.session_state.added_reviews]
+                    
                     for idx, (_, review) in enumerate(top_reviews.iterrows(), 1):
-                        # Highlight the new review
-                        if review['user_id'] == f'NEW_USER_{len(reviews)}':
+                        # Highlight the new reviews
+                        if review['user_id'] in new_user_ids:
                             st.markdown(f"**🆕 #{idx} - Your New Review** (Trust: {review['trust_score']:.3f})")
                             with st.container():
                                 st.markdown(f"**Rating:** {'⭐' * int(review['rating'])}")
@@ -1263,14 +1332,15 @@ if selected_product_dynamic:
                     
                     st.subheader("5️⃣ Ranking Impact: Before vs After")
                     
-                    # Calculate new product metrics
+                    # Calculate new product metrics using all added reviews
                     new_avg_rating = product_reviews_updated['rating'].mean()
                     new_trust_weighted_score = (product_reviews_updated['rating'] * product_reviews_updated['trust_score']).sum() / product_reviews_updated['trust_score'].sum()
                     new_review_count = len(product_reviews_updated)
                     
-                    # Calculate changes
+                    # Calculate changes (cumulative)
                     rating_change = new_avg_rating - current_avg_rating
                     trust_change = new_trust_weighted_score - current_trust_score
+                    review_count_change = added_count
                     
                     # Display before/after comparison
                     st.markdown("**📊 Score Changes:**")
@@ -1281,8 +1351,8 @@ if selected_product_dynamic:
                         st.metric(
                             "📊 Total Reviews",
                             new_review_count,
-                            delta=f"+1",
-                            help="Review count increased by 1"
+                            delta=f"+{review_count_change}",
+                            help=f"Review count increased by {review_count_change}"
                         )
                     
                     with col_comp2:
