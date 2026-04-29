@@ -38,18 +38,16 @@ def load_models():
     elif os.path.exists("../models/tfidf_vectorizer.pkl"):
         base_path = "../"
     else:
-        st.warning("⚠️ Model files not found. Running in demo mode without inference.")
+        # Model files not found - return None silently
         return None, None, None
     
     try:
         tfidf = joblib.load(f"{base_path}models/tfidf_vectorizer.pkl")
         scaler = joblib.load(f"{base_path}models/feature_scaler.pkl")
         model = joblib.load(f"{base_path}models/trained/best_trust_model.pkl")
-        st.success("✅ Models loaded successfully!")
         return tfidf, scaler, model
     except Exception as e:
-        st.error(f"❌ Error loading models: {e}")
-        st.info("💡 The app will continue without live inference. Pre-computed scores will be used.")
+        # Error loading models - return None silently
         return None, None, None
 
 # Load models once
