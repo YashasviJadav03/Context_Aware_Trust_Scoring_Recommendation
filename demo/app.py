@@ -538,7 +538,7 @@ if search_query:
                     avg_rating = product.get('avg_rating', 0)
                     st.write(f"📊 Reviews: {review_count} | Avg Rating: {avg_rating:.2f}")
                     
-            with col3:
+            with col4:
                 if st.button(f"Analyze", key=f"search_analyze_{idx}"):
                     st.session_state.selected_product = product['product_id']
                     st.success(f"✅ Selected!")
