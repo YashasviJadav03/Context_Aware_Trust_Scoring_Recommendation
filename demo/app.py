@@ -1194,22 +1194,6 @@ if selected_product_dynamic:
                 f"{score_diff:+.2f}",
                 help="Trust score - Average rating"
             )
-            )
-        
-        with col3:
-            st.metric(
-                "🧠 Trust Score",
-                f"{current_trust_score:.2f}",
-                help="Trust-weighted score (our system)"
-            )
-        
-        with col4:
-            score_diff = current_trust_score - current_avg_rating
-            st.metric(
-                "📈 Difference",
-                f"{score_diff:+.2f}",
-                help="Trust score - Average rating"
-            )
         
         # Show current ranking position
         st.markdown("**Current Ranking Position:**")
