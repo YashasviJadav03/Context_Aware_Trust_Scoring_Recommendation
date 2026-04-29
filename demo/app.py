@@ -836,29 +836,6 @@ if len(prod) > 0:
     trust_score = prod['score_trust_weighted'].values[0]
     review_count = prod['review_count'].values[0] if 'review_count' in prod.columns else len(filtered_reviews)
     
-    # ============================================================================
-    # PRODUCT INFORMATION SECTION
-    # ============================================================================
-    
-    st.subheader("📦 Product Information")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write(f"**Product ID:** {product_id}")
-        
-        # Get category from product metadata
-        meta = product_metadata[product_metadata['product_id'] == product_id]
-        category = meta.iloc[0]['category'] if len(meta) > 0 else 'Fashion'
-        st.write(f"**Category:** {category}")
-        
-        st.write(f"**Total Reviews:** {len(filtered_reviews)}")
-    with col2:
-        st.write(f"**Average Rating:** {avg_rating:.2f}/5.0")
-        st.write(f"**Trust Score:** {trust_score:.2f}/5.0")
-        recommendation = "✅ Recommended" if trust_score > avg_rating else "⚠️ Caution"
-        st.write(f"**Recommendation:** {recommendation}")
-    
-    st.divider()
-    
     # Calculate and show difference prominently
     difference = trust_score - avg_rating
     
