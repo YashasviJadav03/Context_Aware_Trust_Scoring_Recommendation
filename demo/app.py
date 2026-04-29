@@ -1278,9 +1278,12 @@ if selected_product_dynamic:
                 if add_to_dataset:
                     st.subheader("4️⃣ Updated Reviews (Sorted by Trust)")
                     
+                    # Generate unique user_id for this review (timestamp-based for uniqueness)
+                    new_user_id = f'NEW_USER_{datetime.now().strftime("%Y%m%d_%H%M%S_%f")}'
+                    
                     # Create new review row
                     new_review_row = {
-                        'user_id': f'NEW_USER_{len(reviews) + len(st.session_state.added_reviews)}',
+                        'user_id': new_user_id,
                         'product_id': selected_product_dynamic,
                         'rating': new_rating,
                         'review_text': new_review_text,
