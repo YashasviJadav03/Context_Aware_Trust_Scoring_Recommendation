@@ -849,7 +849,12 @@ if len(prod) > 0:
     col1, col2 = st.columns(2)
     with col1:
         st.write(f"**Product ID:** {product_id}")
-        st.write(f"**Category:** Fashion Item")
+        
+        # Get category from product metadata
+        meta = product_metadata[product_metadata['product_id'] == product_id]
+        category = meta.iloc[0]['category'] if len(meta) > 0 else 'Fashion'
+        st.write(f"**Category:** {category}")
+        
         st.write(f"**Total Reviews:** {len(filtered_reviews)}")
     with col2:
         st.write(f"**Average Rating:** {avg_rating:.2f}/5.0")
