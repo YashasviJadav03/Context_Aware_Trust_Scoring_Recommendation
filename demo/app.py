@@ -1023,15 +1023,30 @@ st.subheader("1️⃣ Product Information")
 col_select1, col_select2 = st.columns([3, 1])
 
 with col_select1:
-    # Get list of products for selection
-    product_list = products['product_id'].unique().tolist()[:100]  # Top 100 products
+    # Get list of products for selection with names
+    product_list_display = []
+    product_id_to_display = {}  # Map display string back to product_id
     
-    selected_product_dynamic = st.selectbox(
+    for pid in products['product_id'].unique().tolist()[:100]:  # Top 100 products
+        meta_row = product_metadata[product_metadata['product_id'] == pid]
+        if len(meta_row) > 0:
+            name = meta_row.iloc[0]['product_name'][:40]  # Truncate to 40 chars
+            display_text = f"{pid} — {name}"
+            product_list_display.append(display_text)
+            product_id_to_display[display_text] = pid
+        else:
+            product_list_display.append(pid)
+            product_id_to_display[pid] = pid
+    
+    selected_display = st.selectbox(
         "Select a product to analyze:",
-        options=product_list,
+        options=product_list_display,
         key="dynamic_product_selector",
         help="Choose a product to view details and add a review"
     )
+    
+    # Extract the actual product_id from the display string
+    selected_product_dynamic = product_id_to_display.get(selected_display, selected_display.split(' — ')[0] if ' — ' in selected_display else selected_display)
 
 with col_select2:
     if st.button("🔄 Reset", key="reset_dynamic"):
