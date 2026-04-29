@@ -397,9 +397,6 @@ def load_data():
     
     return reviews, products, status_message
 
-# Load data
-    return reviews, products, status_message
-
 # ============================================================================
 # LOAD DATA WITH STATUS DISPLAY
 # ============================================================================
