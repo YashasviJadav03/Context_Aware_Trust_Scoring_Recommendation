@@ -596,53 +596,15 @@ if search_query:
     st.divider()
 
 else:
-    # Show top products when no search
-    st.subheader("🏆 Top 10 Recommended Products (Trust-Based)")
-    st.info("💡 Enter a product ID above to search, or browse top products below")
-    
-    top_products = products.nlargest(10, 'score_trust_weighted')
-    
-    for idx, (_, product) in enumerate(top_products.iterrows(), 1):
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col1:
-            st.write(f"**#{idx}**")
-        with col2:
-            st.write(f"Product {product['product_id']}")
-            st.write(f"Trust Score: {product['score_trust_weighted']:.2f}")
-        with col3:
-            if st.button(f"Analyze", key=f"top_analyze_{idx}"):
-                st.session_state.selected_product = product['product_id']
-                st.success(f"✅ Selected!")
-                st.rerun()
-
-# ============================================================================
-# TRUST VS RATING COMPARISON
-# ============================================================================
-
-st.header("⚖️ Trust vs Rating Comparison")
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("🔴 Traditional Ranking (Rating Only)")
-    rating_ranked = products.nlargest(10, 'avg_rating')[['product_id', 'avg_rating']].copy()
-    rating_ranked['avg_rating'] = rating_ranked['avg_rating'].round(2)
-    rating_ranked.columns = ['Product ID', 'Avg Rating']
-    rating_ranked.insert(0, 'Rank', range(1, 11))
-    st.dataframe(rating_ranked, hide_index=True)
-
-with col2:
-    st.subheader("🟢 Trust-Based Ranking (Our System)")
-    trust_ranked = products.nlargest(10, 'score_trust_weighted')[['product_id', 'score_trust_weighted']].copy()
-    trust_ranked['score_trust_weighted'] = trust_ranked['score_trust_weighted'].round(2)
-    trust_ranked.columns = ['Product ID', 'Trust Score']
-    trust_ranked.insert(0, 'Rank', range(1, 11))
-    st.dataframe(trust_ranked, hide_index=True)
-
-# Show the difference
-rating_ids = set(products.nlargest(10, 'avg_rating')['product_id'])
-trust_ids = set(products.nlargest(10, 'score_trust_weighted')['product_id'])
-common_products = rating_ids & trust_ids
-st.info(f"Products in both top 10: {len(common_products)}/10 - Shows ranking difference impact!")
+    # Show helpful message when no search
+    st.info("💡 **Get Started:** Enter a product ID above to search and analyze reviews")
+    st.markdown("""
+    **Tips:**
+    - Search for a specific product ID (e.g., B014EB2ADA)
+    - Use partial ID to find multiple products (e.g., B01)
+    - Switch to 'High Trust Only' mode to search within top-rated products
+    - Scroll down to Section 4 to see the top 10 recommended products
+    """)
 
 st.divider()
 
