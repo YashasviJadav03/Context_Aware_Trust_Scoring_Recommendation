@@ -625,79 +625,49 @@ if st.session_state.selected_product:
     if st.button("🔄 Select Different Product", key="change_product"):
         st.session_state.selected_product = None
         st.rerun()
-    
-else:
-    # No search selection - show dropdown
-    st.info("💡 Search for a product above, or select from popular products below")
-    
-    # Get products with multiple reviews for better demo
-    try:
-        product_review_counts = reviews.groupby('product_id').size().reset_index(name='count')
-        products_with_reviews = product_review_counts[product_review_counts['count'] >= 5].sort_values('count', ascending=False)
-    except KeyError as e:
-        st.error(f"❌ Column error: {e}")
-        st.stop()
-    except Exception as e:
-        st.error(f"❌ Error processing product counts: {e}")
-        st.stop()
 
-    # Create product options with review counts
-    product_options = []
-    for _, row in products_with_reviews.head(100).iterrows():
-        pid = row['product_id']
-        count = row['count']
-        product_options.append(f"{pid} ({count} reviews)")
+st.divider()
 
-    if not product_options:
-        st.error("❌ No products found with sufficient reviews")
-        st.stop()
+# ============================================================================
+# SECTION 1 — PRODUCT OVERVIEW
+# ============================================================================
 
-    selected_option = st.selectbox(
-        "Select a product to analyze:",
-        product_options,
-        key="product_selector_dropdown",
-        help="Products with at least 5 reviews are shown"
-    )
+st.header("📊 Section 1: Product Overview")
 
-    # Extract product_id from selection
-    product_id = selected_option.split(' (')[0]
-    
-    # Add explicit Analyze button - only set session state on button click
-    if st.button("🔍 Analyze this product", key="analyze_dropdown_product"):
-        st.session_state.selected_product = product_id
-        st.rerun()
+# Guard: Ensure a product has been selected
+if 'selected_product' not in st.session_state or st.session_state.selected_product is None:
+    st.info("👆 **Get Started:** Use the search box at the top to find and analyze a product")
+    st.stop()
 
 # Show prominent indicator of what's being analyzed
-st.markdown("---")
-if st.session_state.selected_product:
-    product_id = str(st.session_state.selected_product)
-    current_product = products[products['product_id'].astype(str) == product_id]
-    current_reviews = reviews[reviews['product_id'].astype(str) == product_id]
+product_id = str(st.session_state.selected_product)
+current_product = products[products['product_id'].astype(str) == product_id]
+current_reviews = reviews[reviews['product_id'].astype(str) == product_id]
+
+if len(current_product) > 0 and len(current_reviews) > 0:
+    trust_score = current_product['score_trust_weighted'].iloc[0]
+    avg_rating = current_product['avg_rating'].iloc[0]
+    review_count = len(current_reviews)
     
-    if len(current_product) > 0 and len(current_reviews) > 0:
-        trust_score = current_product['score_trust_weighted'].iloc[0]
-        avg_rating = current_product['avg_rating'].iloc[0]
-        review_count = len(current_reviews)
-        
-        # Display product image and info prominently
-        st.subheader("📦 Product Being Analyzed")
-        display_product_info(product_id, show_image=True, show_details=True)
-        
-        st.markdown("---")
-        
-        # Display metrics
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("📦 Product ID", product_id)
-        with col2:
-            st.metric("🧠 Trust Score", f"{trust_score:.2f}")
-        with col3:
-            st.metric("⭐ Avg Rating", f"{avg_rating:.2f}")
-        with col4:
-            st.metric("📊 Reviews", review_count)
-    else:
-        st.error(f"❌ Product {product_id} not found or has no reviews in dataset")
-        st.stop()
+    # Display product image and info prominently
+    st.subheader("📦 Product Being Analyzed")
+    display_product_info(product_id, show_image=True, show_details=True)
+    
+    st.markdown("---")
+    
+    # Display metrics
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("📦 Product ID", product_id)
+    with col2:
+        st.metric("🧠 Trust Score", f"{trust_score:.2f}")
+    with col3:
+        st.metric("⭐ Avg Rating", f"{avg_rating:.2f}")
+    with col4:
+        st.metric("📊 Reviews", review_count)
+else:
+    st.error(f"❌ Product {product_id} not found or has no reviews in dataset")
+    st.stop()
 
 st.divider()
 
@@ -709,7 +679,7 @@ st.header("📊 Section 2: Reviews Ranked by Trust")
 
 # Guard: Ensure a product has been selected and analyzed
 if 'selected_product' not in st.session_state or st.session_state.selected_product is None:
-    st.info("👆 Search for a product above and click **Analyze** to see reviews.")
+    st.info("👆 **Get Started:** Use the search box at the top to find and analyze a product")
     st.stop()
 
 # Get product_id from session state
@@ -822,7 +792,7 @@ st.header("⚖️ Section 3: Product Score Comparison")
 
 # Guard: Ensure a product has been selected
 if 'selected_product' not in st.session_state or st.session_state.selected_product is None:
-    st.info("👆 Search for a product above and click **Analyze** to see comparison.")
+    st.info("👆 **Get Started:** Use the search box at the top to find and analyze a product")
     st.stop()
 
 # Get product_id from session state
@@ -973,7 +943,7 @@ st.divider()
 
 st.header("🎯 Section 5: Dynamic Product Analysis & Review Addition")
 st.markdown("""
-**Complete workflow:** Select a product → View current metrics → Add a new review → See instant impact on rankings!
+**Test the system:** Add reviews to the selected product and see instant impact on rankings!
 """)
 
 # Show added reviews count and reset button
@@ -1039,12 +1009,10 @@ if 'selected_product' in st.session_state and st.session_state.selected_product:
     meta_row = product_metadata[product_metadata['product_id'] == selected_product_dynamic]
     product_name = meta_row.iloc[0]['product_name'] if len(meta_row) > 0 else selected_product_dynamic
     
-    st.info(f"📦 **Analyzing:** {product_name} (ID: {selected_product_dynamic})")
-    st.caption("💡 To analyze a different product, use the search section above")
+    st.success(f"✅ **Currently Analyzing:** {product_name} (ID: {selected_product_dynamic})")
 else:
-    # Fallback to first product if nothing selected
-    selected_product_dynamic = str(products['product_id'].iloc[0])
-    st.warning("⚠️ No product selected. Using first product as default. Please use the search section above to select a specific product.")
+    st.warning("⚠️ **No product selected.** Use the search box at the top to find and analyze a product.")
+    st.stop()
 
 # Display full product information
 st.markdown("---")
