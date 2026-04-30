@@ -143,7 +143,32 @@ def predict_trust_score(review_text, rating, verified=True, helpful_votes=0,
     - float: Trust score (0-1)
     """
     if tfidf_vectorizer is None or feature_scaler is None or trust_model is None:
-        return 0.5  # Default score if models not loaded
+        # Models not loaded - use simple heuristic
+        # Base score on rating, verified status, and review length
+        base_score = rating / 5.0  # 0.2 to 1.0
+        
+        # Adjust for verified purchase
+        if verified:
+            base_score += 0.1
+        
+        # Adjust for helpful votes
+        if helpful_votes > 0:
+            base_score += min(helpful_votes * 0.02, 0.15)
+        
+        # Adjust for review length
+        word_count = len(review_text.split())
+        if word_count < 10:
+            base_score -= 0.15  # Very short reviews are suspicious
+        elif word_count > 50:
+            base_score += 0.1  # Detailed reviews are more trustworthy
+        
+        # Adjust for excessive punctuation (fake review indicator)
+        exclamation_count = review_text.count('!')
+        if exclamation_count > 3:
+            base_score -= 0.2  # Too many exclamations = suspicious
+        
+        # Clip to valid range [0, 1]
+        return np.clip(base_score, 0, 1)
     
     try:
         # Extract structured features
@@ -175,7 +200,11 @@ def predict_trust_score(review_text, rating, verified=True, helpful_votes=0,
     
     except Exception as e:
         st.error(f"Error predicting trust score: {e}")
-        return 0.5  # Default score on error
+        # Fallback to heuristic
+        base_score = rating / 5.0
+        if verified:
+            base_score += 0.1
+        return np.clip(base_score, 0, 1)
 
 # ============================================================================
 # PRODUCT METADATA LOADING
