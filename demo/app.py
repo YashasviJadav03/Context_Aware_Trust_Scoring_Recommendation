@@ -871,71 +871,197 @@ else:
 st.divider()
 
 # ============================================================================
-# SECTION 4 — TOP RECOMMENDED PRODUCTS (OVERALL DATASET)
+# SECTION 4 — TOP RECOMMENDED PRODUCTS
 # ============================================================================
 
 st.header("🏆 Section 4: Top Recommended Products")
-st.caption("📊 **Note:** This section shows the overall top products from the entire dataset, independent of your search above.")
 
-st.subheader("Top 10 Products by Trust-Weighted Score (Overall)")
-
-# Get top products
-top_products = products.sort_values(by="score_trust_weighted", ascending=False).head(10)
-
-# Prepare display
-top_display = top_products[['product_id', 'review_count', 'avg_rating', 'score_trust_weighted']].copy()
-top_display['score_trust_weighted'] = top_display['score_trust_weighted'].round(3)
-top_display['avg_rating'] = top_display['avg_rating'].round(2)
-top_display.columns = ['Product ID', 'Review Count', 'Avg Rating', 'Trust Score']
-
-# Add rank
-top_display.insert(0, 'Rank', range(1, len(top_display) + 1))
-
-st.dataframe(
-    top_display,
-    use_container_width=True,
-    hide_index=True
-)
-
-# Comparison with rating-based ranking
-st.subheader("Comparison: Trust-Based vs Rating-Based Ranking (Overall)")
-st.caption("Comparing how our trust-based system ranks products differently than simple rating averages")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.write("**Top 10 by Trust Score**")
-    trust_top = products.sort_values(by="score_trust_weighted", ascending=False).head(10)
-    trust_display = trust_top[['product_id', 'score_trust_weighted']].copy()
-    trust_display['score_trust_weighted'] = trust_display['score_trust_weighted'].round(3)
-    trust_display.columns = ['Product ID', 'Trust Score']
-    trust_display.insert(0, 'Rank', range(1, 11))
-    st.dataframe(trust_display, hide_index=True, use_container_width=True)
-
-with col2:
-    st.write("**Top 10 by Average Rating**")
-    rating_top = products.sort_values(by="avg_rating", ascending=False).head(10)
-    rating_display = rating_top[['product_id', 'avg_rating']].copy()
-    rating_display['avg_rating'] = rating_display['avg_rating'].round(2)
-    rating_display.columns = ['Product ID', 'Avg Rating']
-    rating_display.insert(0, 'Rank', range(1, 11))
-    st.dataframe(rating_display, hide_index=True, use_container_width=True)
-
-# Show ranking differences
-trust_ids = set(trust_top['product_id'].values)
-rating_ids = set(rating_top['product_id'].values)
-common = trust_ids & rating_ids
-only_trust = trust_ids - rating_ids
-only_rating = rating_ids - trust_ids
-
-st.info(f"""
-**Ranking Comparison:**
-- Products in both top 10: **{len(common)}**
-- Only in trust-based top 10: **{len(only_trust)}**
-- Only in rating-based top 10: **{len(only_rating)}**
-
-This demonstrates how trust-based ranking differs from simple rating averages across the entire dataset.
-""")
+# Check if a product is selected
+if 'selected_product' in st.session_state and st.session_state.selected_product:
+    selected_product_id = str(st.session_state.selected_product)
+    
+    # Get category of selected product
+    selected_product_data = products[products['product_id'].astype(str) == selected_product_id]
+    
+    if len(selected_product_data) > 0:
+        # Get category from metadata
+        meta_row = product_metadata[product_metadata['product_id'] == selected_product_id]
+        if len(meta_row) > 0 and 'category' in meta_row.columns:
+            selected_category = meta_row.iloc[0]['category']
+        else:
+            selected_category = 'Fashion'  # Default category
+        
+        # Calculate ranking position of selected product
+        products_sorted = products.sort_values('score_trust_weighted', ascending=False).reset_index(drop=True)
+        selected_rank = products_sorted[products_sorted['product_id'].astype(str) == selected_product_id].index[0] + 1
+        total_products = len(products_sorted)
+        
+        # Show ranking position prominently
+        col_rank1, col_rank2 = st.columns([2, 1])
+        with col_rank1:
+            st.success(f"📍 **Your Product Ranking:** #{selected_rank} out of {total_products} products (by trust score)")
+        with col_rank2:
+            percentile = ((total_products - selected_rank) / total_products) * 100
+            st.metric("Percentile", f"Top {100-percentile:.1f}%")
+        
+        st.markdown("---")
+        
+        # Filter products by category
+        category_products = products.copy()
+        if 'category' in product_metadata.columns:
+            # Merge with metadata to get categories
+            category_products = products.merge(
+                product_metadata[['product_id', 'category']], 
+                on='product_id', 
+                how='left'
+            )
+            category_products['category'] = category_products['category'].fillna('Fashion')
+            
+            # Filter by selected category
+            category_products = category_products[category_products['category'] == selected_category]
+        
+        # Show category-specific top 10
+        st.subheader(f"Top 10 Products in '{selected_category}' Category")
+        st.caption(f"📊 Showing top products in the same category as your searched product")
+        
+        top_products = category_products.sort_values(by="score_trust_weighted", ascending=False).head(10)
+        
+        # Prepare display
+        top_display = top_products[['product_id', 'review_count', 'avg_rating', 'score_trust_weighted']].copy()
+        top_display['score_trust_weighted'] = top_display['score_trust_weighted'].round(3)
+        top_display['avg_rating'] = top_display['avg_rating'].round(2)
+        top_display.columns = ['Product ID', 'Review Count', 'Avg Rating', 'Trust Score']
+        
+        # Add rank
+        top_display.insert(0, 'Rank', range(1, len(top_display) + 1))
+        
+        # Highlight the selected product if it's in top 10
+        def highlight_selected(row):
+            if row['Product ID'] == selected_product_id:
+                return ['background-color: #90EE90'] * len(row)
+            return [''] * len(row)
+        
+        styled_display = top_display.style.apply(highlight_selected, axis=1)
+        
+        st.dataframe(
+            styled_display,
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Show if selected product is in top 10
+        if selected_product_id in top_display['Product ID'].values:
+            rank_in_category = top_display[top_display['Product ID'] == selected_product_id].index[0] + 1
+            st.success(f"✅ Your product is ranked **#{rank_in_category}** in the '{selected_category}' category! (highlighted in green)")
+        else:
+            st.info(f"ℹ️ Your product is not in the top 10 of '{selected_category}' category, but you can see the best products in this category above.")
+        
+        st.markdown("---")
+        
+        # Comparison with rating-based ranking (category-specific)
+        st.subheader(f"Comparison: Trust-Based vs Rating-Based Ranking ('{selected_category}' Category)")
+        st.caption("Comparing how our trust-based system ranks products differently than simple rating averages within this category")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**Top 10 by Trust Score**")
+            trust_top = category_products.sort_values(by="score_trust_weighted", ascending=False).head(10)
+            trust_display = trust_top[['product_id', 'score_trust_weighted']].copy()
+            trust_display['score_trust_weighted'] = trust_display['score_trust_weighted'].round(3)
+            trust_display.columns = ['Product ID', 'Trust Score']
+            trust_display.insert(0, 'Rank', range(1, len(trust_display) + 1))
+            st.dataframe(trust_display, hide_index=True, use_container_width=True)
+        
+        with col2:
+            st.write("**Top 10 by Average Rating**")
+            rating_top = category_products.sort_values(by="avg_rating", ascending=False).head(10)
+            rating_display = rating_top[['product_id', 'avg_rating']].copy()
+            rating_display['avg_rating'] = rating_display['avg_rating'].round(2)
+            rating_display.columns = ['Product ID', 'Avg Rating']
+            rating_display.insert(0, 'Rank', range(1, len(rating_display) + 1))
+            st.dataframe(rating_display, hide_index=True, use_container_width=True)
+        
+        # Show ranking differences
+        trust_ids = set(trust_top['product_id'].values)
+        rating_ids = set(rating_top['product_id'].values)
+        common = trust_ids & rating_ids
+        only_trust = trust_ids - rating_ids
+        only_rating = rating_ids - trust_ids
+        
+        st.info(f"""
+        **Ranking Comparison ('{selected_category}' Category):**
+        - Products in both top 10: **{len(common)}**
+        - Only in trust-based top 10: **{len(only_trust)}**
+        - Only in rating-based top 10: **{len(only_rating)}**
+        
+        This demonstrates how trust-based ranking differs from simple rating averages within the '{selected_category}' category.
+        """)
+    else:
+        st.warning("⚠️ Selected product not found in dataset")
+else:
+    # No product selected - show overall top 10
+    st.caption("📊 **Note:** Select a product above to see category-specific rankings and your product's position")
+    
+    st.subheader("Top 10 Products by Trust-Weighted Score (Overall)")
+    
+    # Get top products
+    top_products = products.sort_values(by="score_trust_weighted", ascending=False).head(10)
+    
+    # Prepare display
+    top_display = top_products[['product_id', 'review_count', 'avg_rating', 'score_trust_weighted']].copy()
+    top_display['score_trust_weighted'] = top_display['score_trust_weighted'].round(3)
+    top_display['avg_rating'] = top_display['avg_rating'].round(2)
+    top_display.columns = ['Product ID', 'Review Count', 'Avg Rating', 'Trust Score']
+    
+    # Add rank
+    top_display.insert(0, 'Rank', range(1, len(top_display) + 1))
+    
+    st.dataframe(
+        top_display,
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Comparison with rating-based ranking
+    st.subheader("Comparison: Trust-Based vs Rating-Based Ranking (Overall)")
+    st.caption("Comparing how our trust-based system ranks products differently than simple rating averages")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Top 10 by Trust Score**")
+        trust_top = products.sort_values(by="score_trust_weighted", ascending=False).head(10)
+        trust_display = trust_top[['product_id', 'score_trust_weighted']].copy()
+        trust_display['score_trust_weighted'] = trust_display['score_trust_weighted'].round(3)
+        trust_display.columns = ['Product ID', 'Trust Score']
+        trust_display.insert(0, 'Rank', range(1, 11))
+        st.dataframe(trust_display, hide_index=True, use_container_width=True)
+    
+    with col2:
+        st.write("**Top 10 by Average Rating**")
+        rating_top = products.sort_values(by="avg_rating", ascending=False).head(10)
+        rating_display = rating_top[['product_id', 'avg_rating']].copy()
+        rating_display['avg_rating'] = rating_display['avg_rating'].round(2)
+        rating_display.columns = ['Product ID', 'Avg Rating']
+        rating_display.insert(0, 'Rank', range(1, 11))
+        st.dataframe(rating_display, hide_index=True, use_container_width=True)
+    
+    # Show ranking differences
+    trust_ids = set(trust_top['product_id'].values)
+    rating_ids = set(rating_top['product_id'].values)
+    common = trust_ids & rating_ids
+    only_trust = trust_ids - rating_ids
+    only_rating = rating_ids - trust_ids
+    
+    st.info(f"""
+    **Ranking Comparison:**
+    - Products in both top 10: **{len(common)}**
+    - Only in trust-based top 10: **{len(only_trust)}**
+    - Only in rating-based top 10: **{len(only_rating)}**
+    
+    This demonstrates how trust-based ranking differs from simple rating averages across the entire dataset.
+    """)
 
 st.divider()
 
