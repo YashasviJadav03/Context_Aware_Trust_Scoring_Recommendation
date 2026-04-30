@@ -460,6 +460,9 @@ if st.session_state.clear_search_flag:
     st.session_state.search_query = ""
     st.session_state.selected_product = None
     st.session_state.clear_search_flag = False
+    # Clear the search input widget state
+    if 'search_input' in st.session_state:
+        del st.session_state.search_input
 
 # Search input with advanced options
 col1, col2 = st.columns([3, 1])
