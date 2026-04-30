@@ -30,29 +30,28 @@ def load_models():
     """Load trained models for inference"""
     import os
     
-    # Debug: Print current working directory
-    current_dir = os.getcwd()
+    # Try multiple possible paths
+    possible_paths = [
+        "",  # Running from root
+        "../",  # Running from demo folder
+        "./",  # Explicit current directory
+    ]
     
-    # Determine the correct base path
-    # If running from demo folder, go up one level
-    # If running from root, use current directory
-    if os.path.exists("models/tfidf_vectorizer.pkl"):
-        base_path = ""
-    elif os.path.exists("../models/tfidf_vectorizer.pkl"):
-        base_path = "../"
-    else:
-        # Model files not found
-        # Debug: Show what paths were checked
-        st.error(f"""
-        ❌ Model files not found!
+    base_path = None
+    for path in possible_paths:
+        if os.path.exists(f"{path}models/tfidf_vectorizer.pkl"):
+            base_path = path
+            break
+    
+    if base_path is None:
+        # Model files not found - show debug info
+        current_dir = os.getcwd()
+        st.warning(f"""
+        ⚠️ **Model files not found**
         
-        Current directory: {current_dir}
+        Current directory: `{current_dir}`
         
-        Checked paths:
-        - models/tfidf_vectorizer.pkl: {os.path.exists("models/tfidf_vectorizer.pkl")}
-        - ../models/tfidf_vectorizer.pkl: {os.path.exists("../models/tfidf_vectorizer.pkl")}
-        
-        Files in current directory: {os.listdir('.')}
+        The app will use a heuristic-based trust scoring system instead of ML models.
         """)
         return None, None, None
     
@@ -60,10 +59,14 @@ def load_models():
         tfidf = joblib.load(f"{base_path}models/tfidf_vectorizer.pkl")
         scaler = joblib.load(f"{base_path}models/feature_scaler.pkl")
         model = joblib.load(f"{base_path}models/trained/best_trust_model.pkl")
+        
+        # Success message (will only show on first load due to caching)
+        st.success("✅ ML models loaded successfully!")
+        
         return tfidf, scaler, model
     except Exception as e:
         # Error loading models
-        st.error(f"❌ Error loading models: {e}")
+        st.error(f"❌ Error loading models: {str(e)}")
         return None, None, None
 
 # Load models once
