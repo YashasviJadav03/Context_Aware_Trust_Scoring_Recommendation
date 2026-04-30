@@ -1,14 +1,12 @@
-# Data
-data/
-*.csv
+# Data - exclude raw data but include processed samples for demo
+data/raw/
 *.json
 *.h5
 *.pt
 
-# Ignore large datasets
-data/raw/
-data/processed/
-data/*.json
+# Ignore large datasets but keep demo samples
+!data/processed/reviews_sample.csv
+!data/processed/product_trust_scores.csv
 
 # Python
 __pycache__/
