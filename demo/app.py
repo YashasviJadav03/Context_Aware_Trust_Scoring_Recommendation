@@ -658,11 +658,11 @@ if search_query:
                     st.write(f"**Product {product['product_id']}**")
                 st.write(f"Trust Score: {product['score_trust_weighted']:.2f}")
                 
-                # Show additional info for matches
-                if hasattr(product, 'review_count') and pd.notna(product.get('review_count')):
-                    review_count = product['review_count']
-                    avg_rating = product.get('avg_rating', 0)
-                    st.write(f"📊 Reviews: {review_count} | Avg Rating: {avg_rating:.2f}")
+                # Show additional info for matches - count actual reviews from reviews dataframe
+                # Convert both to string to ensure proper matching
+                actual_review_count = len(reviews[reviews['product_id'].astype(str) == str(product['product_id'])])
+                avg_rating = product.get('avg_rating', 0)
+                st.write(f"📊 Reviews: {actual_review_count} | Avg Rating: {avg_rating:.2f}")
                     
             with col4:
                 if st.button(f"Analyze", key=f"search_analyze_{idx}"):
@@ -890,7 +890,8 @@ prod = products[products['product_id'].astype(str) == str(product_id)]
 if len(prod) > 0:
     avg_rating = prod['avg_rating'].values[0]
     trust_score = prod['score_trust_weighted'].values[0]
-    review_count = prod['review_count'].values[0] if 'review_count' in prod.columns else len(filtered_reviews)
+    # Count actual reviews from reviews dataframe instead of using pre-computed count
+    review_count = len(reviews[reviews['product_id'].astype(str) == str(product_id)])
     
     # Calculate and show difference prominently
     difference = trust_score - avg_rating
@@ -1012,8 +1013,14 @@ if 'selected_product' in st.session_state and st.session_state.selected_product:
         
         top_products = category_products.sort_values(by="score_trust_weighted", ascending=False).head(10)
         
-        # Prepare display
-        top_display = top_products[['product_id', 'review_count', 'avg_rating', 'score_trust_weighted']].copy()
+        # Prepare display - calculate actual review counts from reviews dataframe
+        top_display = top_products[['product_id', 'avg_rating', 'score_trust_weighted']].copy()
+        # Add actual review count by counting reviews for each product
+        top_display['actual_review_count'] = top_display['product_id'].apply(
+            lambda pid: len(reviews[reviews['product_id'].astype(str) == str(pid)])
+        )
+        # Reorder columns
+        top_display = top_display[['product_id', 'actual_review_count', 'avg_rating', 'score_trust_weighted']]
         top_display['score_trust_weighted'] = top_display['score_trust_weighted'].round(3)
         top_display['avg_rating'] = top_display['avg_rating'].round(2)
         top_display.columns = ['Product ID', 'Review Count', 'Avg Rating', 'Trust Score']
@@ -1094,8 +1101,14 @@ else:
     # Get top products
     top_products = products.sort_values(by="score_trust_weighted", ascending=False).head(10)
     
-    # Prepare display
-    top_display = top_products[['product_id', 'review_count', 'avg_rating', 'score_trust_weighted']].copy()
+    # Prepare display - calculate actual review counts from reviews dataframe
+    top_display = top_products[['product_id', 'avg_rating', 'score_trust_weighted']].copy()
+    # Add actual review count by counting reviews for each product
+    top_display['actual_review_count'] = top_display['product_id'].apply(
+        lambda pid: len(reviews[reviews['product_id'].astype(str) == str(pid)])
+    )
+    # Reorder columns
+    top_display = top_display[['product_id', 'actual_review_count', 'avg_rating', 'score_trust_weighted']]
     top_display['score_trust_weighted'] = top_display['score_trust_weighted'].round(3)
     top_display['avg_rating'] = top_display['avg_rating'].round(2)
     top_display.columns = ['Product ID', 'Review Count', 'Avg Rating', 'Trust Score']
