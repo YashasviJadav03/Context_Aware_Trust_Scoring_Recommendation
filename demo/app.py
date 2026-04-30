@@ -17,7 +17,7 @@ from textblob import TextBlob
 
 st.set_page_config(
     page_title="Trust-Based Recommendation System",
-    page_icon="🧠",
+    page_icon="",
     layout="wide"
 )
 
@@ -47,7 +47,7 @@ def load_models():
         # Model files not found - show debug info
         current_dir = os.getcwd()
         st.warning(f"""
-        ⚠️ **Model files not found**
+        [WARNING] **Model files not found**
         
         Current directory: `{current_dir}`
         
@@ -61,12 +61,12 @@ def load_models():
         model = joblib.load(f"{base_path}models/trained/best_trust_model.pkl")
         
         # Success message (will only show on first load due to caching)
-        st.success("✅ ML models loaded successfully!")
+        st.success("[SUCCESS] ML models loaded successfully!")
         
         return tfidf, scaler, model
     except Exception as e:
         # Error loading models
-        st.error(f"❌ Error loading models: {str(e)}")
+        st.error(f"[ERROR] Error loading models: {str(e)}")
         return None, None, None
 
 # Load models once
@@ -248,14 +248,14 @@ def load_product_metadata():
             metadata = pd.read_csv(metadata_url)
             return metadata
         except Exception as e:
-            st.warning(f"⚠️ Could not load metadata from Google Drive: {e}")
+            st.warning(f"[WARNING] Could not load metadata from Google Drive: {e}")
     
     # Fallback to local file
     try:
         metadata = pd.read_csv("demo/product_metadata.csv")
         return metadata
     except FileNotFoundError:
-        st.error("❌ Product metadata file not found. Please ensure demo/product_metadata.csv exists.")
+        st.error("[ERROR] Product metadata file not found. Please ensure demo/product_metadata.csv exists.")
         # Return empty dataframe with expected columns
         return pd.DataFrame(columns=['product_id', 'product_name', 'image_url', 'category', 'brand', 'price', 'description'])
 
@@ -284,9 +284,9 @@ def display_product_info(product_id, show_image=True, show_details=True):
                     try:
                         st.image(img_url, use_container_width=True)
                     except:
-                        st.markdown("📦 **No image available**")
+                        st.markdown(" **No image available**")
                 else:
-                    st.markdown("📦 **No image available**")
+                    st.markdown(" **No image available**")
             
             with col2:
                 # Display product details
@@ -299,7 +299,7 @@ def display_product_info(product_id, show_image=True, show_details=True):
                 # Display description if available
                 if 'description' in meta_row and meta_row['description'] and str(meta_row['description']) != 'nan':
                     desc = str(meta_row['description'])[:150]
-                    st.caption(f"📝 {desc}{'...' if len(str(meta_row['description'])) > 150 else ''}")
+                    st.caption(f" {desc}{'...' if len(str(meta_row['description'])) > 150 else ''}")
         
         elif show_image:
             # Display image only - handle missing/empty URLs
@@ -308,9 +308,9 @@ def display_product_info(product_id, show_image=True, show_details=True):
                 try:
                     st.image(img_url, width=150)
                 except:
-                    st.info("📦")
+                    st.info("")
             else:
-                st.info("📦")
+                st.info("")
         
         elif show_details:
             st.write(f"**{meta_row['product_name']}**")
@@ -319,7 +319,7 @@ def display_product_info(product_id, show_image=True, show_details=True):
     else:
         # No metadata available
         if show_image:
-            st.info("📦 Product Image")
+            st.info(" Product Image")
         if show_details:
             st.write(f"**Product ID:** {product_id}")
             st.caption("Fashion Item")
@@ -351,13 +351,13 @@ def load_data():
         try:
             reviews = pd.read_csv("../data/processed/reviews_sample.csv")
             products = pd.read_csv("../data/processed/product_trust_scores.csv")
-            status_message = f"✅ Local sample data loaded: {len(reviews):,} reviews, {len(products):,} products"
+            status_message = f"[SUCCESS] Local sample data loaded: {len(reviews):,} reviews, {len(products):,} products"
         except FileNotFoundError:
             # Try demo folder sample files
             try:
                 reviews = pd.read_csv("reviews_sample.csv")
                 products = pd.read_csv("products_sample.csv")
-                status_message = f"✅ Demo sample data loaded: {len(reviews):,} reviews, {len(products):,} products"
+                status_message = f"[SUCCESS] Demo sample data loaded: {len(reviews):,} reviews, {len(products):,} products"
             except FileNotFoundError:
                 raise FileNotFoundError("Sample CSV files not found. Please update File IDs to use Google Drive.")
     else:
@@ -385,7 +385,7 @@ def load_data():
             reviews = load_large_csv_from_gdrive(REVIEWS_FILE_ID, "reviews")
             products = load_large_csv_from_gdrive(PRODUCTS_FILE_ID, "products")
             
-            status_message = f"✅ Data loaded from Google Drive: {len(reviews):,} reviews, {len(products):,} products"
+            status_message = f"[SUCCESS] Data loaded from Google Drive: {len(reviews):,} reviews, {len(products):,} products"
         except Exception as e:
             raise Exception(f"Error loading data from Google Drive: {e}")
     
@@ -448,13 +448,13 @@ def load_data():
 # ============================================================================
 
 try:
-    with st.spinner("📥 Loading data..."):
+    with st.spinner("Loading data..."):
         reviews, products, load_status = load_data()
     
     # Display success message
     st.success(load_status)
 except Exception as e:
-    st.error(f"❌ Error loading data: {e}")
+    st.error(f"[ERROR] Error loading data: {e}")
     st.error("**Possible solutions:**")
     st.error("1. Files are too large (>100MB) - Google Drive blocks direct CSV loading")
     st.error("2. Try using smaller sample files for demo")
@@ -466,12 +466,12 @@ except Exception as e:
 # HEADER
 # ============================================================================
 
-st.title("🧠 Trust-Based Product Recommendation System")
+st.title(" Trust-Based Product Recommendation System")
 
 # Show model loading status
 if tfidf_vectorizer is None or feature_scaler is None or trust_model is None:
     st.warning("""
-    ⚠️ **Running in Demo Mode** - ML models not loaded. 
+    [WARNING] **Running in Demo Mode** - ML models not loaded. 
     
     The app is using pre-computed trust scores from the dataset. 
     To enable live inference in Section 5, ensure model files are accessible.
@@ -488,7 +488,7 @@ st.divider()
 # PRODUCT SEARCH SIMULATION
 # ============================================================================
 
-st.header("🔍 Product Search")
+st.header(" Product Search")
 
 # Initialize session state variables BEFORE using them
 if 'selected_product' not in st.session_state:
@@ -612,13 +612,13 @@ if search_query:
     # Display search info
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
-        st.subheader(f"🔍 Search Results: '{search_query}'")
+        st.subheader(f" Search Results: '{search_query}'")
         if len(search_results) > 0:
             st.info(f"**{search_type}** - Found {len(search_results)} product(s)")
         else:
             st.warning(f"**No Results** - No products found for '{search_query}'")
     with col2:
-        if st.button("🔄 Clear Search", key="clear_search"):
+        if st.button(" Clear Search", key="clear_search"):
             st.session_state.clear_search_flag = True
             st.rerun()
     with col3:
@@ -631,13 +631,13 @@ if search_query:
         for idx, (_, product) in enumerate(search_results.iterrows(), 1):
             # Highlight exact matches and high trust products
             if product['product_id'].upper() == search_query_upper:
-                highlight = "🎯"
+                highlight = ""
                 badge = "EXACT MATCH"
             elif product['score_trust_weighted'] >= 4.5:
-                highlight = "⭐"
+                highlight = ""
                 badge = "HIGH TRUST"
             else:
-                highlight = "📦"
+                highlight = ""
                 badge = ""
             
             col1, col2, col3, col4 = st.columns([1, 1, 3, 1])
@@ -662,17 +662,17 @@ if search_query:
                 # Convert both to string to ensure proper matching
                 actual_review_count = len(reviews[reviews['product_id'].astype(str) == str(product['product_id'])])
                 avg_rating = product.get('avg_rating', 0)
-                st.write(f"📊 Reviews: {actual_review_count} | Avg Rating: {avg_rating:.2f}")
+                st.write(f" Reviews: {actual_review_count} | Avg Rating: {avg_rating:.2f}")
                     
             with col4:
                 if st.button(f"Analyze", key=f"search_analyze_{idx}"):
                     st.session_state.selected_product = product['product_id']
-                    st.success(f"✅ Selected!")
+                    st.success(f"[SUCCESS] Selected!")
                     st.rerun()
     
     # Search suggestions
     if len(search_results) == 0:
-        st.subheader("💡 Search Suggestions")
+        st.subheader("[TIP] Search Suggestions")
         st.write("Try these search patterns:")
         st.write("- **Product Name:** handbag, shoes, dress")
         st.write("- **Category:** women's clothing, accessories")
@@ -683,9 +683,9 @@ if search_query:
 
 else:
     # Show helpful message when no search
-    st.info("💡 **Get Started:** Enter a product ID above to search and analyze reviews")
+    st.info("[TIP] **Instructions:** Enter a product ID above to search and analyze reviews")
     st.markdown("""
-    **Tips:**
+    **Guidelines:**
     - Search for a specific product ID (e.g., B014EB2ADA)
     - Use partial ID to find multiple products (e.g., B01)
     - Switch to 'High Trust Only' mode to search within top-rated products
@@ -698,17 +698,17 @@ st.divider()
 # SECTION 1 — PRODUCT SELECTION (DYNAMIC)
 # ============================================================================
 
-st.header("📦 Product Analysis")
+st.header(" Product Analysis")
 
 # Use selected product from search if available, otherwise show dropdown
 if st.session_state.selected_product:
     # Product selected from search - show it prominently
     product_id = str(st.session_state.selected_product)
     
-    st.success(f"🎯 Analyzing Product: **{product_id}** (from search)")
+    st.success(f" Analyzing Product: **{product_id}** (from search)")
     
     # Option to change product
-    if st.button("🔄 Select Different Product", key="change_product"):
+    if st.button(" Select Different Product", key="change_product"):
         st.session_state.selected_product = None
         st.rerun()
 
@@ -718,11 +718,11 @@ st.divider()
 # SECTION 1 — PRODUCT OVERVIEW
 # ============================================================================
 
-st.header("📊 Section 1: Product Overview")
+st.header(" Section 1: Product Overview")
 
 # Guard: Ensure a product has been selected
 if 'selected_product' not in st.session_state or st.session_state.selected_product is None:
-    st.info("👆 **Get Started:** Use the search box at the top to find and analyze a product")
+    st.info(" **Instructions:** Use the search box at the top to find and analyze a product")
     st.stop()
 
 # Show prominent indicator of what's being analyzed
@@ -736,7 +736,7 @@ if len(current_product) > 0 and len(current_reviews) > 0:
     review_count = len(current_reviews)
     
     # Display product image and info prominently
-    st.subheader("📦 Product Being Analyzed")
+    st.subheader(" Product Being Analyzed")
     display_product_info(product_id, show_image=True, show_details=True)
     
     st.markdown("---")
@@ -744,15 +744,15 @@ if len(current_product) > 0 and len(current_reviews) > 0:
     # Display metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("📦 Product ID", product_id)
+        st.metric(" Product ID", product_id)
     with col2:
-        st.metric("🧠 Trust Score", f"{trust_score:.2f}")
+        st.metric(" Trust Score", f"{trust_score:.2f}")
     with col3:
-        st.metric("⭐ Avg Rating", f"{avg_rating:.2f}")
+        st.metric(" Avg Rating", f"{avg_rating:.2f}")
     with col4:
-        st.metric("📊 Reviews", review_count)
+        st.metric(" Reviews", review_count)
 else:
-    st.error(f"❌ Product {product_id} not found or has no reviews in dataset")
+    st.error(f"[ERROR] Product {product_id} not found or has no reviews in dataset")
     st.stop()
 
 st.divider()
@@ -761,11 +761,11 @@ st.divider()
 # SECTION 2 — REVIEWS RANKED BY TRUST
 # ============================================================================
 
-st.header("📊 Section 2: Reviews Ranked by Trust")
+st.header(" Section 2: Reviews Ranked by Trust")
 
 # Guard: Ensure a product has been selected and analyzed
 if 'selected_product' not in st.session_state or st.session_state.selected_product is None:
-    st.info("👆 **Get Started:** Use the search box at the top to find and analyze a product")
+    st.info(" **Instructions:** Use the search box at the top to find and analyze a product")
     st.stop()
 
 # Get product_id from session state
@@ -775,7 +775,7 @@ product_id = str(st.session_state.selected_product)
 filtered_reviews = reviews[reviews['product_id'].astype(str) == str(product_id)].copy()
 
 if len(filtered_reviews) == 0:
-    st.error(f"❌ No reviews found for product {product_id}")
+    st.error(f"[ERROR] No reviews found for product {product_id}")
     st.stop()
 
 # Safety check: ensure trust_score column exists
@@ -783,7 +783,7 @@ if 'trust_score' not in filtered_reviews.columns:
     if 'predicted_trust_score' in filtered_reviews.columns:
         filtered_reviews['trust_score'] = filtered_reviews['predicted_trust_score']
     else:
-        st.error("❌ Trust score column not found in reviews data")
+        st.error("[ERROR] Trust score column not found in reviews data")
         st.stop()
 
 # Sort by trust score (descending)
@@ -847,7 +847,7 @@ filtered_reviews_display = filtered_reviews[filtered_reviews['trust_score'] >= m
 # Show low trust warning
 low_trust_count = (filtered_reviews['trust_score'] < 0.3).sum()
 if low_trust_count > 0:
-    st.warning(f"⚠️ {low_trust_count} low-trust reviews detected (trust score < 0.3)")
+    st.warning(f"[WARNING] {low_trust_count} low-trust reviews detected (trust score < 0.3)")
 
 st.write(f"Showing **{len(filtered_reviews_display)}** reviews (filtered from {len(filtered_reviews)})")
 
@@ -858,7 +858,7 @@ display_df['review_text'] = display_df['review_text'].astype(str).apply(lambda x
 display_df['trust_score'] = display_df['trust_score'].round(4)
 
 # Add flag column for highlighting
-display_df['Status'] = display_df['low_trust_flag'].apply(lambda x: '🔴 Low Trust' if x else '🟢 Trusted')
+display_df['Status'] = display_df['low_trust_flag'].apply(lambda x: '[LOW TRUST] Low Trust' if x else '[TRUSTED] Trusted')
 display_df = display_df.drop('low_trust_flag', axis=1)
 display_df.columns = ['Review Text', 'Rating', 'Trust Score', 'Verified', 'Status']
 
@@ -874,11 +874,11 @@ st.divider()
 # SECTION 3 — PRODUCT SCORE COMPARISON
 # ============================================================================
 
-st.header("⚖️ Section 3: Product Score Comparison")
+st.header(" Section 3: Product Score Comparison")
 
 # Guard: Ensure a product has been selected
 if 'selected_product' not in st.session_state or st.session_state.selected_product is None:
-    st.info("👆 **Get Started:** Use the search box at the top to find and analyze a product")
+    st.info(" **Instructions:** Use the search box at the top to find and analyze a product")
     st.stop()
 
 # Get product_id from session state
@@ -902,14 +902,14 @@ if len(prod) > 0:
     
     with col1:
         st.metric(
-            "⭐ Average Rating",
+            " Average Rating",
             f"{avg_rating:.2f}",
             help="Simple average of all ratings"
         )
     
     with col2:
         st.metric(
-            "🧠 Trust-Weighted Score",
+            " Trust-Weighted Score",
             f"{trust_score:.2f}",
             delta=f"{difference:+.2f}",
             help="Rating weighted by review trust scores"
@@ -917,7 +917,7 @@ if len(prod) > 0:
     
     with col3:
         st.metric(
-            "📊 Difference",
+            " Difference",
             f"{difference:+.2f}",
             delta=f"{abs(difference):.2f}",
             delta_color="normal" if difference > 0 else "inverse",
@@ -934,11 +934,11 @@ if len(prod) > 0:
     
     # Explanation
     if difference > 0:
-        st.success(f"✅ Trust-weighted score is **higher** by {abs(difference):.2f} points. High-quality reviews boost this product.")
+        st.success(f"[SUCCESS] Trust-weighted score is **higher** by {abs(difference):.2f} points. High-quality reviews boost this product.")
     elif difference < 0:
-        st.warning(f"⚠️ Trust-weighted score is **lower** by {abs(difference):.2f} points. Low-quality reviews may be inflating the average.")
+        st.warning(f"[WARNING] Trust-weighted score is **lower** by {abs(difference):.2f} points. Low-quality reviews may be inflating the average.")
     else:
-        st.info("ℹ️ Trust-weighted score matches the average rating.")
+        st.info("[INFO] Trust-weighted score matches the average rating.")
     
     # Additional metrics
     st.subheader("Additional Product Metrics")
@@ -961,7 +961,7 @@ st.divider()
 # SECTION 4 — TOP RECOMMENDED PRODUCTS
 # ============================================================================
 
-st.header("🏆 Section 4: Top Recommended Products")
+st.header(" Section 4: Top Recommended Products")
 
 # Check if a product is selected
 if 'selected_product' in st.session_state and st.session_state.selected_product:
@@ -986,7 +986,7 @@ if 'selected_product' in st.session_state and st.session_state.selected_product:
         # Show ranking position prominently
         col_rank1, col_rank2 = st.columns([2, 1])
         with col_rank1:
-            st.success(f"📍 **Your Product Ranking:** #{selected_rank} out of {total_products} products (by trust score)")
+            st.success(f"**Your Product Ranking:** #{selected_rank} out of {total_products} products (by trust score)")
         with col_rank2:
             percentile = ((total_products - selected_rank) / total_products) * 100
             st.metric("Percentile", f"Top {100-percentile:.1f}%")
@@ -1009,7 +1009,7 @@ if 'selected_product' in st.session_state and st.session_state.selected_product:
         
         # Show category-specific top 10
         st.subheader(f"Top 10 Products in '{selected_category}' Category")
-        st.caption(f"📊 Showing top products in the same category as your searched product")
+        st.caption(f" Showing top products in the same category as your searched product")
         
         top_products = category_products.sort_values(by="score_trust_weighted", ascending=False).head(10)
         
@@ -1045,9 +1045,9 @@ if 'selected_product' in st.session_state and st.session_state.selected_product:
         # Show if selected product is in top 10
         if selected_product_id in top_display['Product ID'].values:
             rank_in_category = top_display[top_display['Product ID'] == selected_product_id].index[0] + 1
-            st.success(f"✅ Your product is ranked **#{rank_in_category}** in the '{selected_category}' category! (highlighted in green)")
+            st.success(f"[SUCCESS] Your product is ranked **#{rank_in_category}** in the '{selected_category}' category! (highlighted in green)")
         else:
-            st.info(f"ℹ️ Your product is not in the top 10 of '{selected_category}' category, but you can see the best products in this category above.")
+            st.info(f"[INFO] Your product is not in the top 10 of '{selected_category}' category, but you can see the best products in this category above.")
         
         st.markdown("---")
         
@@ -1091,10 +1091,10 @@ if 'selected_product' in st.session_state and st.session_state.selected_product:
         This demonstrates how trust-based ranking differs from simple rating averages within the '{selected_category}' category.
         """)
     else:
-        st.warning("⚠️ Selected product not found in dataset")
+        st.warning("[WARNING] Selected product not found in dataset")
 else:
     # No product selected - show overall top 10
-    st.caption("📊 **Note:** Select a product above to see category-specific rankings and your product's position")
+    st.caption(" **Note:** Select a product above to see category-specific rankings and your product's position")
     
     st.subheader("Top 10 Products by Trust-Weighted Score (Overall)")
     
@@ -1168,7 +1168,7 @@ st.divider()
 # SECTION 5 — IMPROVED UI FLOW: DYNAMIC PRODUCT ANALYSIS
 # ============================================================================
 
-st.header("🎯 Section 5: Dynamic Product Analysis & Review Addition")
+st.header(" Section 5: Dynamic Product Analysis & Review Addition")
 st.markdown("""
 **Test the system:** Add reviews to the selected product and see instant impact on rankings!
 """)
@@ -1177,17 +1177,17 @@ st.markdown("""
 col_info1, col_info2 = st.columns([3, 1])
 with col_info1:
     if len(st.session_state.added_reviews) > 0:
-        st.info(f"📝 **{len(st.session_state.added_reviews)} review(s) added** in this session (cumulative impact shown)")
+        st.info(f" **{len(st.session_state.added_reviews)} review(s) added** in this session (cumulative impact shown)")
 with col_info2:
     if len(st.session_state.added_reviews) > 0:
-        if st.button("🗑️ Clear All Added Reviews", key="clear_added_reviews", help="Reset to original dataset"):
+        if st.button(" Clear All Added Reviews", key="clear_added_reviews", help="Reset to original dataset"):
             st.session_state.added_reviews = []
-            st.success("✅ All added reviews cleared!")
+            st.success("[SUCCESS] All added reviews cleared!")
             st.rerun()
 
 # Show Review History table if reviews have been added
 if len(st.session_state.added_reviews) > 0:
-    st.markdown("### 📋 Review History (This Session)")
+    st.markdown("###  Review History (This Session)")
     
     # Create DataFrame from added reviews
     history_data = []
@@ -1195,7 +1195,7 @@ if len(st.session_state.added_reviews) > 0:
         history_data.append({
             '#': i,
             'Review Text': review['review_text'][:50] + '...' if len(review['review_text']) > 50 else review['review_text'],
-            'Rating': '⭐' * int(review['rating']),
+            'Rating': '' * int(review['rating']),
             'Trust Score': f"{review['trust_score']:.3f}",
             'Verified': '✓' if review['verified'] else '✗',
             'Product': review['product_id'][:10] + '...'
@@ -1218,15 +1218,15 @@ if len(st.session_state.added_reviews) > 0:
         }
     )
     
-    st.caption(f"💡 Showing all {len(st.session_state.added_reviews)} review(s) added in this session. Use the table above to track your demo scenario.")
+    st.caption(f"[TIP] Showing all {len(st.session_state.added_reviews)} review(s) added in this session. Use the table above to track your demo scenario.")
 
 st.divider()
 
 # ============================================================================
-# 1️⃣ PRODUCT INFO
+# 1. PRODUCT INFO
 # ============================================================================
 
-st.subheader("1️⃣ Product Information")
+st.subheader("1. Product Information")
 
 # Use the product already selected in the search section
 if 'selected_product' in st.session_state and st.session_state.selected_product:
@@ -1236,9 +1236,9 @@ if 'selected_product' in st.session_state and st.session_state.selected_product:
     meta_row = product_metadata[product_metadata['product_id'] == selected_product_dynamic]
     product_name = meta_row.iloc[0]['product_name'] if len(meta_row) > 0 else selected_product_dynamic
     
-    st.success(f"✅ **Currently Analyzing:** {product_name} (ID: {selected_product_dynamic})")
+    st.success(f"[SUCCESS] **Currently Analyzing:** {product_name} (ID: {selected_product_dynamic})")
 else:
-    st.warning("⚠️ **No product selected.** Use the search box at the top to find and analyze a product.")
+    st.warning("[WARNING] **No product selected.** Use the search box at the top to find and analyze a product.")
     st.stop()
 
 # Display full product information
@@ -1248,10 +1248,10 @@ display_product_info(selected_product_dynamic, show_image=True, show_details=Tru
 st.divider()
 
 # ============================================================================
-# 2️⃣ PRODUCT SCORES (CURRENT STATE)
+# 2. PRODUCT SCORES (CURRENT STATE)
 # ============================================================================
 
-st.subheader("2️⃣ Current Product Scores")
+st.subheader("2. Current Product Scores")
 
 if selected_product_dynamic:
     # Build current reviews including any added reviews from session state
@@ -1302,7 +1302,7 @@ if selected_product_dynamic:
         
         with col1:
             st.metric(
-                "📊 Total Reviews",
+                " Total Reviews",
                 current_review_count,
                 delta=f"+{added_count_for_product}" if added_count_for_product > 0 else None,
                 help="Number of reviews for this product (including added reviews)"
@@ -1310,7 +1310,7 @@ if selected_product_dynamic:
         
         with col2:
             st.metric(
-                "⭐ Average Rating",
+                " Average Rating",
                 f"{current_avg_rating:.2f}",
                 delta=f"{rating_delta:+.2f}" if added_count_for_product > 0 else None,
                 delta_color="normal" if rating_delta >= 0 else "inverse",
@@ -1319,7 +1319,7 @@ if selected_product_dynamic:
         
         with col3:
             st.metric(
-                "🧠 Trust Score",
+                " Trust Score",
                 f"{current_trust_score:.2f}",
                 delta=f"{trust_delta:+.2f}" if added_count_for_product > 0 else None,
                 delta_color="normal" if trust_delta >= 0 else "inverse",
@@ -1329,7 +1329,7 @@ if selected_product_dynamic:
         with col4:
             score_diff = current_trust_score - current_avg_rating
             st.metric(
-                "📈 Difference",
+                " Difference",
                 f"{score_diff:+.2f}",
                 help="Trust score - Average rating"
             )
@@ -1340,40 +1340,40 @@ if selected_product_dynamic:
         current_rank = products_sorted[products_sorted['product_id'] == selected_product_dynamic].index[0] + 1
         total_products = len(products_sorted)
         
-        st.info(f"🏆 This product is ranked **#{current_rank}** out of {total_products} products (by trust score)")
+        st.info(f" This product is ranked **#{current_rank}** out of {total_products} products (by trust score)")
 
 st.divider()
 
 # ============================================================================
-# 3️⃣ ADD NEW REVIEW
+# 3. ADD NEW REVIEW
 # ============================================================================
 
-st.subheader("3️⃣ Add New Review")
+st.subheader("3. Add New Review")
 
 if selected_product_dynamic:
     st.markdown("Enter a new review for this product and see how it affects the trust score and ranking!")
     
     # Demo instructions
-    st.info("💡 **Demo Tip:** Click '🔴 Fake Review' 3 times and watch the trust score drop while the average rating stays high. This demonstrates the system's ability to detect and downweight suspicious reviews!")
+    st.info("[TIP] **Note:** Click '[LOW TRUST] Suspicious Review' 3 times and watch the trust score drop while the average rating stays high. This demonstrates the system's ability to detect and downweight suspicious reviews!")
     
     # Review input
     col_input1, col_input2 = st.columns([2, 1])
     
     with col_input1:
         # Preset buttons for demo (placed before text area)
-        st.markdown("**Quick Demo Presets:**")
+        st.markdown("**Preset Options:**")
         col_preset1, col_preset2 = st.columns(2)
         
         with col_preset1:
-            if st.button("🟢 Genuine Review", use_container_width=True, help="Load a realistic, trustworthy review"):
+            if st.button("[TRUSTED] Trustworthy Review", use_container_width=True, help="Load a realistic, trustworthy review"):
                 st.session_state.preset_review_text = "Great product, fits well, fast delivery. Exactly as described. Would buy again."
                 st.session_state.preset_rating = 5
                 st.session_state.preset_verified = True
                 st.rerun()
         
         with col_preset2:
-            if st.button("🔴 Fake Review", use_container_width=True, help="Load a suspicious, low-quality review"):
-                st.session_state.preset_review_text = "AMAZING!!! BEST PRODUCT EVER!!!! 5 STARS!!!! BUY NOW!!!!"
+            if st.button("[LOW TRUST] Suspicious Review", use_container_width=True, help="Load a suspicious, low-quality review"):
+                st.session_state.preset_review_text = "Excellent product. Highly recommended. Five stars."
                 st.session_state.preset_rating = 5
                 st.session_state.preset_verified = False
                 st.rerun()
@@ -1409,7 +1409,7 @@ if selected_product_dynamic:
     with col_input2:
         st.markdown("**Advanced Options**")
         
-        with st.expander("⚙️ Optional Settings"):
+        with st.expander(" Optional Settings"):
             new_helpful_votes = st.number_input(
                 "Helpful Votes:",
                 min_value=0,
@@ -1429,7 +1429,7 @@ if selected_product_dynamic:
     
     with col_btn1:
         predict_button = st.button(
-            "🔮 Predict Trust Score",
+            " Predict Trust Score",
             type="primary",
             use_container_width=True,
             key="predict_dynamic"
@@ -1437,7 +1437,7 @@ if selected_product_dynamic:
     
     with col_btn2:
         add_to_dataset = st.checkbox(
-            "📊 Add to dataset",
+            " Add to dataset",
             value=True,
             key="add_dataset_dynamic",
             help="Update product ranking with this review"
@@ -1454,9 +1454,9 @@ if selected_product_dynamic:
             st.session_state.preset_verified = True
         
         if not new_review_text or len(new_review_text.strip()) < 3:
-            st.error("❌ Please enter a review with at least 3 characters")
+            st.error("[ERROR] Please enter a review with at least 3 characters")
         else:
-            with st.spinner("🧠 Analyzing review..."):
+            with st.spinner(" Analyzing review..."):
                 # Predict trust score
                 predicted_trust = predict_trust_score(
                     review_text=new_review_text,
@@ -1468,14 +1468,14 @@ if selected_product_dynamic:
                 )
                 
                 # Display prediction result
-                st.success("✅ Trust score predicted successfully!")
+                st.success("[SUCCESS] Trust score predicted successfully!")
                 
                 # Show predicted trust score
                 col_result1, col_result2, col_result3 = st.columns(3)
                 
                 with col_result1:
                     st.metric(
-                        "🧠 Predicted Trust Score",
+                        " Predicted Trust Score",
                         f"{predicted_trust:.4f}",
                         help="Trust score for this review (0-1 scale)"
                     )
@@ -1483,7 +1483,7 @@ if selected_product_dynamic:
                 with col_result2:
                     trust_percentage = predicted_trust * 100
                     st.metric(
-                        "📊 Trust Percentage",
+                        " Trust Percentage",
                         f"{trust_percentage:.1f}%",
                         help="Trust score as percentage"
                     )
@@ -1491,14 +1491,14 @@ if selected_product_dynamic:
                 with col_result3:
                     # Classify trust level
                     if predicted_trust >= 0.7:
-                        trust_level = "🟢 High Trust"
+                        trust_level = "[TRUSTED] High Trust"
                     elif predicted_trust >= 0.4:
-                        trust_level = "🟡 Medium Trust"
+                        trust_level = "[MEDIUM] Medium Trust"
                     else:
-                        trust_level = "🔴 Low Trust"
+                        trust_level = "[LOW TRUST] Low Trust"
                     
                     st.metric(
-                        "🎯 Trust Level",
+                        " Trust Level",
                         trust_level,
                         help="Classification based on trust score"
                     )
@@ -1514,11 +1514,11 @@ if selected_product_dynamic:
                 st.divider()
                 
                 # ============================================================================
-                # 4️⃣ UPDATED REVIEWS (IF ADDED TO DATASET)
+                # 4. UPDATED REVIEWS (IF ADDED TO DATASET)
                 # ============================================================================
                 
                 if add_to_dataset:
-                    st.subheader("4️⃣ Updated Reviews (Sorted by Trust)")
+                    st.subheader("4. Updated Reviews (Sorted by Trust)")
                     
                     # Generate unique user_id for this review (timestamp-based for uniqueness)
                     new_user_id = f'NEW_USER_{datetime.now().strftime("%Y%m%d_%H%M%S_%f")}'
@@ -1551,7 +1551,7 @@ if selected_product_dynamic:
                     
                     # Show updated review count with cumulative count
                     added_count = len([r for r in st.session_state.added_reviews if r['product_id'] == selected_product_dynamic])
-                    st.info(f"📊 Total reviews for this product: **{len(product_reviews_updated)}** (including {added_count} new review{'s' if added_count > 1 else ''})")
+                    st.info(f" Total reviews for this product: **{len(product_reviews_updated)}** (including {added_count} new review{'s' if added_count > 1 else ''})")
                     
                     # Display top reviews
                     st.markdown("**Top 5 Reviews by Trust Score:**")
@@ -1564,25 +1564,25 @@ if selected_product_dynamic:
                     for idx, (_, review) in enumerate(top_reviews.iterrows(), 1):
                         # Highlight the new reviews
                         if review['user_id'] in new_user_ids:
-                            st.markdown(f"**🆕 #{idx} - Your New Review** (Trust: {review['trust_score']:.3f})")
+                            st.markdown(f"**[NEW] #{idx} - Your New Review** (Trust: {review['trust_score']:.3f})")
                             with st.container():
-                                st.markdown(f"**Rating:** {'⭐' * int(review['rating'])}")
+                                st.markdown(f"**Rating:** {'' * int(review['rating'])}")
                                 st.markdown(f"**Review:** {review['review_text'][:200]}...")
                                 st.markdown(f"**Verified:** {'✓' if review['verified'] else '✗'}")
                         else:
                             st.markdown(f"**#{idx}** (Trust: {review['trust_score']:.3f})")
                             with st.expander(f"View Review #{idx}"):
-                                st.markdown(f"**Rating:** {'⭐' * int(review['rating'])}")
+                                st.markdown(f"**Rating:** {'' * int(review['rating'])}")
                                 st.markdown(f"**Review:** {review['review_text'][:200]}...")
                                 st.markdown(f"**Verified:** {'✓' if review['verified'] else '✗'}")
                     
                     st.divider()
                     
                     # ============================================================================
-                    # 5️⃣ RANKING IMPACT (BEFORE VS AFTER)
+                    # 5. RANKING IMPACT (BEFORE VS AFTER)
                     # ============================================================================
                     
-                    st.subheader("5️⃣ Ranking Impact: Before vs After")
+                    st.subheader("5. Ranking Impact: Before vs After")
                     
                     # Calculate new product metrics using all added reviews
                     new_avg_rating = product_reviews_updated['rating'].mean()
@@ -1595,13 +1595,13 @@ if selected_product_dynamic:
                     review_count_change = added_count
                     
                     # Display before/after comparison
-                    st.markdown("**📊 Score Changes:**")
+                    st.markdown("** Score Changes:**")
                     
                     col_comp1, col_comp2, col_comp3 = st.columns(3)
                     
                     with col_comp1:
                         st.metric(
-                            "📊 Total Reviews",
+                            " Total Reviews",
                             new_review_count,
                             delta=f"+{review_count_change}",
                             help=f"Review count increased by {review_count_change}"
@@ -1609,7 +1609,7 @@ if selected_product_dynamic:
                     
                     with col_comp2:
                         st.metric(
-                            "⭐ Average Rating",
+                            " Average Rating",
                             f"{new_avg_rating:.2f}",
                             delta=f"{rating_change:+.2f}",
                             delta_color="normal" if rating_change >= 0 else "inverse",
@@ -1618,7 +1618,7 @@ if selected_product_dynamic:
                     
                     with col_comp3:
                         st.metric(
-                            "🧠 Trust Score",
+                            " Trust Score",
                             f"{new_trust_weighted_score:.2f}",
                             delta=f"{trust_change:+.2f}",
                             delta_color="normal" if trust_change >= 0 else "inverse",
@@ -1626,7 +1626,7 @@ if selected_product_dynamic:
                         )
                     
                     # Visual comparison
-                    st.markdown("**📈 Visual Comparison:**")
+                    st.markdown("** Visual Comparison:**")
                     
                     comparison_df = pd.DataFrame({
                         'Before': [current_avg_rating, current_trust_score],
@@ -1636,31 +1636,31 @@ if selected_product_dynamic:
                     st.bar_chart(comparison_df)
                     
                     # Impact interpretation
-                    st.markdown("**💡 Impact Analysis:**")
+                    st.markdown("**[TIP] Impact Analysis:**")
                     
                     if trust_change > 0:
                         st.success(f"""
-                        **Positive Impact!** 🎉
+                        **Positive Impact!** 
                         - Your review improved the product's trust score by **{trust_change:.3f}** points
                         - The review has high trust ({predicted_trust:.3f})
                         - Product ranking will improve in trust-based recommendations
                         """)
                     elif trust_change < 0:
                         st.warning(f"""
-                        **Negative Impact** ⚠️
+                        **Negative Impact** [WARNING]
                         - Your review decreased the product's trust score by **{abs(trust_change):.3f}** points
                         - The review has lower trust ({predicted_trust:.3f})
                         - Product ranking will decrease in trust-based recommendations
                         """)
                     else:
                         st.info(f"""
-                        **Neutral Impact** ℹ️
+                        **Neutral Impact** [INFO]
                         - Your review maintained the product's trust score
                         - The review's trust ({predicted_trust:.3f}) matches the product average
                         """)
                     
                     # Updated ranking position
-                    st.markdown("**🏆 Updated Ranking Position:**")
+                    st.markdown("** Updated Ranking Position:**")
                     
                     # Update products dataframe
                     products_updated = products.copy()
@@ -1693,14 +1693,14 @@ if selected_product_dynamic:
                         )
                     
                     if rank_change > 0:
-                        st.success(f"🎉 Product moved up {rank_change} position(s) in the ranking!")
+                        st.success(f" Product moved up {rank_change} position(s) in the ranking!")
                     elif rank_change < 0:
-                        st.warning(f"⚠️ Product moved down {abs(rank_change)} position(s) in the ranking.")
+                        st.warning(f"[WARNING] Product moved down {abs(rank_change)} position(s) in the ranking.")
                     else:
-                        st.info("ℹ️ Product ranking position unchanged.")
+                        st.info("[INFO] Product ranking position unchanged.")
                     
                     # Show top 10 with highlighting
-                    st.markdown("**📋 Updated Top 10 Products:**")
+                    st.markdown("** Updated Top 10 Products:**")
                     
                     top_10_updated = products_sorted_new.head(10)[['product_id', 'score_trust_weighted', 'avg_rating']].copy()
                     top_10_updated['score_trust_weighted'] = top_10_updated['score_trust_weighted'].round(3)
@@ -1720,20 +1720,20 @@ if selected_product_dynamic:
                         hide_index=True
                     )
                     
-                    st.info(f"💡 **Product {selected_product_dynamic}** is highlighted in green")
+                    st.info(f"[TIP] **Product {selected_product_dynamic}** is highlighted in green")
                     
                     # Note about persistence
                     st.warning("""
-                    ⚠️ **Note:** This update is temporary and only affects the current session.
+                    [WARNING] **Note:** This update is temporary and only affects the current session.
                     In a production system, changes would be persisted to a database.
                     Refresh the page to reset to original data.
                     """)
                 
                 else:
-                    st.info("💡 Check 'Add to dataset' to see the impact on product ranking!")
+                    st.info("[TIP] Check 'Add to dataset' to see the impact on product ranking!")
 
 else:
-    st.info("👆 Please select a product above to begin")
+    st.info(" Please select a product above to begin")
 
 st.divider()
 
@@ -1742,6 +1742,6 @@ st.divider()
 # ============================================================================
 
 st.markdown("---")
-st.caption("🧠 Trust-Based Product Recommendation System | Built with Streamlit")
-st.caption("💡 This demo uses machine learning to identify trustworthy reviews and rank products accordingly.")
+st.caption(" Trust-Based Product Recommendation System | Built with Streamlit")
+st.caption("[TIP] This demo uses machine learning to identify trustworthy reviews and rank products accordingly.")
 
