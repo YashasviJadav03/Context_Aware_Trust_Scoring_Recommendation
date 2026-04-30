@@ -199,18 +199,17 @@ def predict_trust_score(review_text, rating, verified=True, helpful_votes=0,
         # Create feature dataframe
         feature_df = pd.DataFrame([features])
         
-        # Get TF-IDF features
+        # Scale ONLY the structured features (not TF-IDF)
+        scaled_structured_features = feature_scaler.transform(feature_df.values)
+        
+        # Get TF-IDF features (already normalized, don't scale)
         tfidf_features = tfidf_vectorizer.transform([review_text]).toarray()
         
-        # Combine features
-        structured_features = feature_df.values
-        combined_features = np.hstack([structured_features, tfidf_features])
-        
-        # Scale features
-        scaled_features = feature_scaler.transform(combined_features)
+        # Combine scaled structured features + TF-IDF features
+        combined_features = np.hstack([scaled_structured_features, tfidf_features])
         
         # Predict trust score
-        trust_score = trust_model.predict(scaled_features)[0]
+        trust_score = trust_model.predict(combined_features)[0]
         
         # Clip to valid range [0, 1]
         trust_score = np.clip(trust_score, 0, 1)
