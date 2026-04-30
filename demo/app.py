@@ -30,6 +30,9 @@ def load_models():
     """Load trained models for inference"""
     import os
     
+    # Debug: Print current working directory
+    current_dir = os.getcwd()
+    
     # Determine the correct base path
     # If running from demo folder, go up one level
     # If running from root, use current directory
@@ -38,7 +41,19 @@ def load_models():
     elif os.path.exists("../models/tfidf_vectorizer.pkl"):
         base_path = "../"
     else:
-        # Model files not found - return None silently
+        # Model files not found
+        # Debug: Show what paths were checked
+        st.error(f"""
+        ❌ Model files not found!
+        
+        Current directory: {current_dir}
+        
+        Checked paths:
+        - models/tfidf_vectorizer.pkl: {os.path.exists("models/tfidf_vectorizer.pkl")}
+        - ../models/tfidf_vectorizer.pkl: {os.path.exists("../models/tfidf_vectorizer.pkl")}
+        
+        Files in current directory: {os.listdir('.')}
+        """)
         return None, None, None
     
     try:
@@ -47,7 +62,8 @@ def load_models():
         model = joblib.load(f"{base_path}models/trained/best_trust_model.pkl")
         return tfidf, scaler, model
     except Exception as e:
-        # Error loading models - return None silently
+        # Error loading models
+        st.error(f"❌ Error loading models: {e}")
         return None, None, None
 
 # Load models once
