@@ -517,56 +517,93 @@ with col1:
     search_query = st.text_input(
         "Search for products:", 
         value=st.session_state.search_query,
-        placeholder="e.g., 'B014EB2ADA' or 'B01' for partial match", 
+        placeholder="e.g., 'handbag', 'leather', 'B014EB2ADA'", 
         key="search_input"
     )
     # Update session state with current search query
     if search_query != st.session_state.search_query:
         st.session_state.search_query = search_query
 with col2:
-    search_mode = st.selectbox("Search Mode", ["Smart Search", "Exact Match", "High Trust Only"])
+    search_mode = st.selectbox("Search Mode", ["Smart Search", "Product ID Only", "High Trust Only"])
 
 if search_query:
     # Real search functionality
+    search_query_lower = search_query.lower().strip()
     search_query_upper = search_query.upper().strip()
     
     # Search methods based on mode
     search_results = pd.DataFrame()
     
-    if search_mode == "Exact Match":
-        search_results = products[products['product_id'].str.upper() == search_query_upper]
-        search_type = "Exact Match"
+    if search_mode == "Product ID Only":
+        # Search only by product ID
+        exact_match = products[products['product_id'].str.upper() == search_query_upper]
+        partial_match = products[products['product_id'].str.upper().str.contains(search_query_upper, na=False)]
+        
+        if len(exact_match) > 0:
+            search_results = exact_match
+            search_type = "Exact Product ID Match"
+        elif len(partial_match) > 0:
+            search_results = partial_match.head(10)
+            search_type = "Partial Product ID Match"
+        else:
+            search_results = pd.DataFrame()
+            search_type = "No Product ID Match"
         
     elif search_mode == "High Trust Only":
         high_trust_threshold = products['score_trust_weighted'].quantile(0.75)
         high_trust_products = products[products['score_trust_weighted'] >= high_trust_threshold]
         
-        if search_query_upper in high_trust_products['product_id'].str.upper().values:
-            search_results = high_trust_products[high_trust_products['product_id'].str.upper() == search_query_upper]
-            search_type = "High Trust Exact Match"
-        else:
-            search_results = high_trust_products[high_trust_products['product_id'].str.upper().str.contains(search_query_upper, na=False)].head(10)
-            search_type = "High Trust Products"
+        # Merge with metadata for text search
+        high_trust_with_meta = high_trust_products.merge(
+            product_metadata[['product_id', 'product_name', 'category', 'brand']], 
+            on='product_id', 
+            how='left'
+        )
+        
+        # Search in product ID, name, category, brand
+        mask = (
+            high_trust_with_meta['product_id'].str.upper().str.contains(search_query_upper, na=False) |
+            high_trust_with_meta['product_name'].str.lower().str.contains(search_query_lower, na=False) |
+            high_trust_with_meta['category'].str.lower().str.contains(search_query_lower, na=False) |
+            high_trust_with_meta['brand'].str.lower().str.contains(search_query_lower, na=False)
+        )
+        
+        search_results = high_trust_with_meta[mask].head(10)
+        search_type = "High Trust Products"
             
-    else:  # Smart Search (default)
-        exact_match = products[products['product_id'].str.upper() == search_query_upper]
-        partial_match = products[products['product_id'].str.upper().str.startswith(search_query_upper)]
-        contains_match = products[products['product_id'].str.upper().str.contains(search_query_upper, na=False)]
+    else:  # Smart Search (default) - searches everything
+        # Merge products with metadata for comprehensive search
+        products_with_meta = products.merge(
+            product_metadata[['product_id', 'product_name', 'category', 'brand']], 
+            on='product_id', 
+            how='left'
+        )
+        
+        # Try exact product ID match first
+        exact_match = products_with_meta[products_with_meta['product_id'].str.upper() == search_query_upper]
         
         if len(exact_match) > 0:
             search_results = exact_match
-            search_type = "Exact Match"
+            search_type = "Exact Product ID Match"
             # Auto-select exact match
             st.session_state.selected_product = exact_match.iloc[0]['product_id']
-        elif len(partial_match) > 0:
-            search_results = partial_match.head(10)
-            search_type = "Partial Match"
-        elif len(contains_match) > 0:
-            search_results = contains_match.head(10)
-            search_type = "Contains Match"
         else:
-            search_results = products.nlargest(5, 'score_trust_weighted')
-            search_type = "No matches - Top Suggestions"
+            # Search in product name, category, brand, and product ID
+            mask = (
+                products_with_meta['product_id'].str.upper().str.contains(search_query_upper, na=False) |
+                products_with_meta['product_name'].str.lower().str.contains(search_query_lower, na=False) |
+                products_with_meta['category'].str.lower().str.contains(search_query_lower, na=False) |
+                products_with_meta['brand'].str.lower().str.contains(search_query_lower, na=False)
+            )
+            
+            text_matches = products_with_meta[mask]
+            
+            if len(text_matches) > 0:
+                search_results = text_matches.head(20)
+                search_type = "Text Match (Name/Category/Brand)"
+            else:
+                search_results = products.nlargest(5, 'score_trust_weighted')
+                search_type = "No matches - Top Suggestions"
     
     # Sort search results by trust score (descending)
     if len(search_results) > 0:
@@ -637,9 +674,10 @@ if search_query:
     if len(search_results) == 0:
         st.subheader("💡 Search Suggestions")
         st.write("Try these search patterns:")
-        st.write("- **Exact ID:** B014EB2ADA")
-        st.write("- **Partial ID:** B01 (shows all products starting with B01)")
-        st.write("- **Switch to 'High Trust Only'** to search within top-rated products")
+        st.write("- **Product Name:** handbag, shoes, dress")
+        st.write("- **Category:** women's clothing, accessories")
+        st.write("- **Brand:** specific brand names")
+        st.write("- **Product ID:** B014EB2ADA or B01")
     
     st.divider()
 
