@@ -24,3 +24,5 @@ beautifulsoup4
 lxml
 jupyter
 ipykernel
+streamlit
+plotly
