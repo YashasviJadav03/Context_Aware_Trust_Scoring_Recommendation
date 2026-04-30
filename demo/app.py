@@ -871,12 +871,13 @@ else:
 st.divider()
 
 # ============================================================================
-# SECTION 4 — TOP RECOMMENDED PRODUCTS
+# SECTION 4 — TOP RECOMMENDED PRODUCTS (OVERALL DATASET)
 # ============================================================================
 
 st.header("🏆 Section 4: Top Recommended Products")
+st.caption("📊 **Note:** This section shows the overall top products from the entire dataset, independent of your search above.")
 
-st.subheader("Top 10 Products by Trust-Weighted Score")
+st.subheader("Top 10 Products by Trust-Weighted Score (Overall)")
 
 # Get top products
 top_products = products.sort_values(by="score_trust_weighted", ascending=False).head(10)
@@ -897,7 +898,8 @@ st.dataframe(
 )
 
 # Comparison with rating-based ranking
-st.subheader("Comparison: Trust-Based vs Rating-Based Ranking")
+st.subheader("Comparison: Trust-Based vs Rating-Based Ranking (Overall)")
+st.caption("Comparing how our trust-based system ranks products differently than simple rating averages")
 
 col1, col2 = st.columns(2)
 
@@ -932,7 +934,7 @@ st.info(f"""
 - Only in trust-based top 10: **{len(only_trust)}**
 - Only in rating-based top 10: **{len(only_rating)}**
 
-This shows how trust-based ranking differs from simple rating averages.
+This demonstrates how trust-based ranking differs from simple rating averages across the entire dataset.
 """)
 
 st.divider()
