@@ -69,10 +69,8 @@ class DatabaseManager:
             cursor = self.conn.cursor()
             
             if self.db_type == 'sqlite':
-                # SQLite: execute statements one by one
-                for statement in schema_sql.split(';'):
-                    if statement.strip():
-                        cursor.execute(statement)
+                # SQLite: use executescript which handles multiple statements
+                cursor.executescript(schema_sql)
             else:
                 # PostgreSQL: can execute all at once
                 cursor.execute(schema_sql)
