@@ -7,6 +7,9 @@ import pandas as pd
 import gzip
 import json
 
+
+
+
 print("📦 Loading Amazon Fashion metadata...")
 print("This may take a few minutes for large files...")
 

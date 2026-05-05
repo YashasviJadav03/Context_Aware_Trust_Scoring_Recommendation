@@ -1,0 +1,6 @@
+Feature_Group,Features_Removed,N_Removed,R2_Without,R2_Degradation_%,Spearman_Without,Spearman_Degradation_%
+Rating,"rating, rating_deviation, verified, helpful_ratio",4,0.367586,56.3919,0.619744,33.4049
+User-Behavioral,"user_review_count, user_review_frequency",2,0.680171,19.3088,0.847265,8.9564
+Text,"review_length, sentiment_score, sentiment_extreme, repetition_ratio, exclamation_count, question_count",6,0.798462,5.2755,0.896726,3.6416
+Product-Context,"product_review_count, product_rating_variance, product_popularity_log",3,0.842888,0.005,0.930588,0.0029
+Temporal,"days_since_first_review, review_density, review_time_gap",3,0.84298,-0.0059,0.930593,0.0024
