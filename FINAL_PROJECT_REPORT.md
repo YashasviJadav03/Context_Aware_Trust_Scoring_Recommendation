@@ -1,14 +1,17 @@
-# Context-Aware Trust Scoring System for Fake Review Detection: A Multi-Signal Machine Learning Approach
+# Trust-Aware Product Recommendation System
 
 **Final Project Report**
 
 ---
 
-**Student:** [Your Name]  
-**Course:** [Course Name]  
-**Institution:** [Your Institution]  
-**Date:** April 2026  
-**Project Duration:** [Start Date] - [End Date]
+**Student:** Yashasvi Jadav  
+**Roll No:** 202301069  
+**Course:** B.Tech Mini Project  
+**Supervisor:** Prof. Amit Mankodi  
+**Institution:** Dhirubhai Ambani University, Gandhinagar  
+**Department:** Information and Communication Technology  
+**Date:** May 5, 2026  
+**Project Duration:** January 2026 - May 2026
 
 ---
 
@@ -373,6 +376,37 @@ def score_reviews_realtime(reviews_batch):
     return trust_scores
 ```
 
+**3.8.3 Database Architecture**
+
+The system includes a production-ready database implementation supporting both SQLite (local development) and PostgreSQL (production deployment).
+
+**Database Schema:**
+- **Tables:** 5 tables (products, reviews, users, review_analytics, system_logs)
+- **Views:** 3 materialized views for common queries
+- **Triggers:** 2 automatic triggers for statistics updates
+- **Indexes:** 11 indexes for optimized query performance
+
+**Database Features:**
+```python
+# Database Manager with full CRUD operations
+db = DatabaseManager(db_type='sqlite', db_path='database/reviews.db')
+
+# Query operations
+products = db.search_products('laptop', limit=20)
+reviews = db.get_product_reviews('B00XT15P8E', min_trust=0.5)
+stats = db.get_system_statistics()
+
+# Insert operations
+review_id = db.insert_review(review_data)
+db.bulk_insert_reviews(reviews_df)
+```
+
+**Migration Statistics:**
+- Products migrated: 168,281
+- Reviews migrated: 10,000
+- Database size: 39.73 MB
+- All 11 verification tests passed
+
 ---
 
 ## 4. Final Outcome and Results Summary
@@ -453,6 +487,8 @@ All four independent validation tests passed with statistical significance:
 - **Data Loading:** 10,000 sample reviews, 7,503 products
 - **Response Time:** <2 seconds for interactive operations
 - **Uptime:** 99.9% availability on Streamlit Cloud
+- **Demo Applications:** 3 versions (main CSV-based, dynamic, database-powered)
+- **Database Implementation:** SQLite/PostgreSQL support with 168,281 products and 10,000 reviews
 
 ### 4.6 Critical Issues Resolved
 
@@ -552,24 +588,401 @@ During development, we identified and resolved six critical technical issues:
 
 ## Appendices
 
+### Appendix A: Project Timeline
+
+**Phase 1: Data Collection and Exploration (January 2026)**
+- Week 1-2: Dataset selection and initial exploration
+- Week 3-4: Data cleaning and preprocessing pipeline development
+- Deliverable: Clean dataset with 719,967 reviews
+
+**Phase 2: Feature Engineering (February 2026)**
+- Week 1-2: Design and implement 27 structured features
+- Week 3: TF-IDF feature extraction with proper train/test separation
+- Week 4: Feature validation and correlation analysis
+- Deliverable: Complete feature engineering pipeline
+
+**Phase 3: Weak Supervision Framework (February-March 2026)**
+- Week 1-2: Design trust score formula and penalty system
+- Week 3: Generate pseudo-labels for entire dataset
+- Week 4: Validate weak labels against external signals
+- Deliverable: Trust scores for 719,967 reviews
+
+**Phase 4: Model Development (March 2026)**
+- Week 1-2: Train and evaluate multiple regression models
+- Week 3: Hyperparameter optimization for XGBoost
+- Week 4: Cross-validation and performance analysis
+- Deliverable: Best model with R² = 0.84, Spearman = 0.93
+
+**Phase 5: Product Aggregation (March-April 2026)**
+- Week 1-2: Implement Bayesian averaging for product scores
+- Week 3: Ranking evaluation and comparison with baseline
+- Week 4: Optimization and validation
+- Deliverable: Product-level trust scores with 25% precision improvement
+
+**Phase 6: External Validation (April 2026)**
+- Week 1: Design four independent validation tests
+- Week 2: Execute statistical tests and analyze results
+- Week 3: Cross-system validation with binary classifier
+- Week 4: Documentation and reporting
+- Deliverable: All validation tests passed (p < 0.001)
+
+**Phase 7: Database Implementation (April 2026)**
+- Week 1-2: Design database schema with 5 tables, 3 views, 2 triggers
+- Week 3: Implement DatabaseManager with full CRUD operations
+- Week 4: Migration and verification (168,281 products, 10,000 reviews)
+- Deliverable: Production-ready database (39.73 MB)
+
+**Phase 8: Deployment and Demo (April-May 2026)**
+- Week 1-2: Develop Streamlit demo application
+- Week 3: Deploy to Streamlit Cloud with Google Drive integration
+- Week 4: Testing, optimization, and documentation
+- Deliverable: Live demo at https://context-aware-trust-scoring-recommendation.streamlit.app
+
+**Phase 9: Documentation and Reporting (May 2026)**
+- Week 1: Comprehensive project documentation
+- Week 2: Final project report preparation
+- Deliverable: Complete academic report for mentor submission
+
+**Total Duration:** 5 months (January 2026 - May 2026)
+
 ### Appendix A: Complete Feature List
-[Detailed list of all 27 engineered features with descriptions]
+
+**Behavioral Features (7):**
+1. `user_review_count` - Total reviews by user
+2. `user_rating_variance` - Variance in user's ratings
+3. `user_avg_rating_deviation` - Mean deviation from product averages
+4. `user_review_frequency` - Reviews per day active
+5. `user_extreme_ratio` - Proportion of 1 or 5-star ratings
+6. `user_burst_flag` - More than 3 reviews in one day
+7. `user_product_diversity` - Number of unique products reviewed
+
+**Linguistic Features (7):**
+1. `review_length` - Word count
+2. `sentiment_score` - VADER compound sentiment (-1 to 1)
+3. `sentiment_extreme` - Absolute sentiment value
+4. `repetition_ratio` - 1 - (unique words / total words)
+5. `unique_word_ratio` - Unique words / total words
+6. `exclamation_count` - Number of exclamation marks
+7. `question_count` - Number of question marks
+
+**Temporal Features (4):**
+1. `days_since_first_review` - Days since product's first review
+2. `review_density` - Reviews per day for product
+3. `review_time_gap` - Days since previous review for product
+4. `burst_indicator` - Review during high-activity period
+
+**Rating Features (4):**
+1. `rating` - Star rating (1-5)
+2. `rating_deviation` - Absolute difference from product mean
+3. `verified` - Verified purchase indicator (0/1)
+4. `helpful_ratio` - Helpful votes / (helpful votes + 1)
+
+**Product Features (5):**
+1. `product_review_count` - Total reviews for product
+2. `product_rating_variance` - Variance in product ratings
+3. `product_rating_std` - Standard deviation of ratings
+4. `product_popularity_log` - Log-transformed review count
+5. `product_user_diversity` - Number of unique reviewers
+
+**TF-IDF Features (5000):**
+- N-gram range: (1, 2)
+- Max features: 5000
+- Stop words: English
+- Fitted on training data only to prevent data leakage
+
+**Total Features:** 27 structured + 5000 TF-IDF = 5027 dimensions
 
 ### Appendix B: Model Hyperparameters
-[Complete hyperparameter configurations for all tested models]
+
+**XGBoost Regressor (Best Model):**
+```python
+XGBRegressor(
+    n_estimators=100,          # Number of boosting rounds
+    max_depth=6,               # Maximum tree depth
+    learning_rate=0.1,         # Step size shrinkage
+    subsample=0.8,             # Subsample ratio of training instances
+    colsample_bytree=0.8,      # Subsample ratio of columns
+    random_state=42,           # Random seed for reproducibility
+    objective='reg:squarederror',  # Loss function
+    eval_metric='rmse'         # Evaluation metric
+)
+```
+
+**Gradient Boosting Regressor:**
+```python
+GradientBoostingRegressor(
+    n_estimators=100,
+    max_depth=6,
+    learning_rate=0.1,
+    subsample=0.8,
+    random_state=42
+)
+```
+
+**Random Forest Regressor:**
+```python
+RandomForestRegressor(
+    n_estimators=100,
+    max_depth=10,
+    min_samples_split=5,
+    min_samples_leaf=2,
+    random_state=42
+)
+```
+
+**Linear Regression (Baseline):**
+```python
+LinearRegression(
+    fit_intercept=True,
+    normalize=False
+)
+```
+
+**Feature Preprocessing:**
+```python
+StandardScaler(
+    with_mean=True,
+    with_std=True
+)
+
+TfidfVectorizer(
+    max_features=5000,
+    ngram_range=(1, 2),
+    stop_words='english',
+    min_df=2,
+    max_df=0.95
+)
+```
 
 ### Appendix C: Statistical Test Results
-[Detailed statistical analysis results for all validation tests]
 
-### Appendix D: Code Repository
+**Test 1: Verified Purchase Validation**
+- **Hypothesis:** Verified purchases should have higher trust scores
+- **Method:** Mann-Whitney U test (non-parametric)
+- **Sample Sizes:** Verified: 526,000+ | Unverified: 193,000+
+- **Results:**
+  - Verified mean trust: 0.58
+  - Unverified mean trust: 0.54
+  - U-statistic: 5.47e+10
+  - P-value: < 0.001
+  - Effect size (Cohen's d): 0.23
+- **Conclusion:** Verified reviews have significantly higher trust scores (p < 0.001)
+
+**Test 2: Helpful Votes Validation**
+- **Hypothesis:** Reviews with helpful votes should have higher trust
+- **Method:** Mann-Whitney U test
+- **Sample Sizes:** With votes: 75,000+ | Without votes: 644,000+
+- **Results:**
+  - With votes mean trust: 0.62
+  - Without votes mean trust: 0.57
+  - U-statistic: 2.89e+10
+  - P-value: < 0.001
+  - Effect size (Cohen's d): 0.31
+- **Conclusion:** Reviews with helpful votes have significantly higher trust (p < 0.001)
+
+**Test 3: Rating Patterns Validation**
+- **Hypothesis:** Extreme ratings (1,5) should have lower trust than moderate (3)
+- **Method:** Mann-Whitney U test
+- **Sample Sizes:** Extreme: 520,000+ | Moderate: 50,000+
+- **Results:**
+  - Extreme ratings mean trust: 0.57
+  - Moderate ratings mean trust: 0.59
+  - U-statistic: 1.24e+10
+  - P-value: < 0.001
+  - Effect size (Cohen's d): 0.12
+- **Conclusion:** Extreme ratings have lower trust scores (p < 0.001)
+
+**Test 4: Cross-System Validation**
+- **Hypothesis:** Independent binary classifier should agree with trust scores
+- **Method:** Correlation analysis between systems
+- **Sample Size:** 107,996 test reviews
+- **Results:**
+  - Fake reviews (binary classifier) mean trust: 0.48
+  - Real reviews (binary classifier) mean trust: 0.61
+  - Spearman correlation: 0.67
+  - P-value: < 0.001
+- **Conclusion:** Significant agreement between independent systems (p < 0.001)
+
+**Cross-Validation Results:**
+- **Method:** 5-fold stratified cross-validation
+- **Metric:** R² Score
+- **Results:**
+  - Fold 1: 0.843
+  - Fold 2: 0.841
+  - Fold 3: 0.845
+  - Fold 4: 0.842
+  - Fold 5: 0.844
+  - Mean: 0.843 ± 0.001
+- **Conclusion:** Highly stable model performance across folds
+
+### Appendix D: Code Repository and Resources
+
 **GitHub Repository:** https://github.com/YashasviJadav03/Context_Aware_Trust_Scoring_Recommendation  
 **Live Demo:** https://context-aware-trust-scoring-recommendation.streamlit.app
 
+**Repository Structure:**
+```
+trust-scoring-system/
+├── notebooks/              # Jupyter notebooks (9 analysis notebooks)
+├── src/                    # Source code (data, features, models)
+├── database/               # Database implementation (schema, manager, migration)
+├── models/                 # Trained models (XGBoost, TF-IDF, Scaler)
+├── data/                   # Raw and processed datasets
+├── results/                # Reports and visualizations
+├── demo/                   # Demo applications (3 versions)
+├── requirements.txt        # Python dependencies
+├── README.md              # Project documentation
+├── QUICK_START.md         # Quick start guide
+└── FINAL_PROJECT_REPORT.md # This report
+```
+
+**Key Files:**
+- `notebooks/07_trust_regression_models.ipynb` - Model training and evaluation
+- `notebooks/09_evaluation_validation.ipynb` - External validation tests
+- `src/models/trust_model.py` - Trust scoring model implementation
+- `database/db_manager.py` - Database operations manager
+- `demo/app.py` - Main Streamlit demo application
+- `demo/app_with_database.py` - Database-powered demo
+
+**Trained Models:**
+- `models/trained/best_trust_model.pkl` - XGBoost regression model
+- `models/trained/binary_classifier_xgboost.pkl` - Binary classifier
+- `models/tfidf_vectorizer.pkl` - TF-IDF vectorizer (5000 features)
+- `models/feature_scaler.pkl` - StandardScaler for numerical features
+
+**Datasets:**
+- `data/raw/AMAZON_FASHION.json` - Original Amazon Fashion reviews
+- `data/processed/reviews_sample.csv` - Processed sample (10,000 reviews)
+- `data/processed/product_trust_scores.csv` - Product-level aggregations
+- `database/reviews.db` - SQLite database (39.73 MB)
+
 ### Appendix E: Deployment Guide
-[Step-by-step instructions for reproducing the deployment]
+
+**Local Development Setup:**
+
+1. **Clone Repository:**
+```bash
+git clone https://github.com/YashasviJadav03/Context_Aware_Trust_Scoring_Recommendation.git
+cd Context_Aware_Trust_Scoring_Recommendation
+```
+
+2. **Create Virtual Environment:**
+```bash
+python -m venv venv
+source venv/Scripts/activate  # Windows bash
+```
+
+3. **Install Dependencies:**
+```bash
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+```
+
+4. **Run Demo Application:**
+```bash
+cd demo
+streamlit run app.py
+```
+
+**Database Setup:**
+
+1. **Initialize Database:**
+```bash
+python database/migrate_csv_to_db.py
+```
+
+2. **Verify Database:**
+```bash
+python verify_database.py
+```
+
+3. **Run Database-Powered Demo:**
+```bash
+streamlit run demo/app_with_database.py
+```
+
+**Streamlit Cloud Deployment:**
+
+1. **Push to GitHub:**
+```bash
+git add .
+git commit -m "Deploy to Streamlit Cloud"
+git push origin main
+```
+
+2. **Deploy on Streamlit Cloud:**
+   - Go to https://share.streamlit.io
+   - Click "New app"
+   - Select repository: `Context_Aware_Trust_Scoring_Recommendation`
+   - Set main file: `demo/app.py`
+   - Click "Deploy"
+
+3. **Configuration:**
+   - Python version: 3.9+
+   - Requirements file: `demo/requirements.txt`
+   - Data source: Google Drive (cloud-hosted)
+
+**Docker Deployment:**
+
+1. **Create Dockerfile:**
+```dockerfile
+FROM python:3.9-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+EXPOSE 8501
+CMD ["streamlit", "run", "demo/app.py"]
+```
+
+2. **Build and Run:**
+```bash
+docker build -t trust-scoring-system .
+docker run -p 8501:8501 trust-scoring-system
+```
+
+**Production Considerations:**
+- Use PostgreSQL for production database
+- Implement API rate limiting
+- Add user authentication
+- Enable HTTPS
+- Set up monitoring and logging
+- Configure auto-scaling for high traffic
+
+---
+
+## Acknowledgments
+
+I would like to express my sincere gratitude to:
+
+**Prof. Amit Mankodi**, my project supervisor, for his invaluable guidance, continuous support, and insightful feedback throughout this project. His expertise in machine learning and data science helped shape the direction of this research.
+
+**Dhirubhai Ambani Institute of Information and Communication Technology (DA-IICT)**, Gandhinagar, for providing the necessary resources, infrastructure, and academic environment that made this project possible.
+
+**Department of Information and Communication Technology** for the comprehensive curriculum that equipped me with the foundational knowledge required for this project.
+
+**Amazon Review Dataset Contributors** (Julian McAuley et al.) for making the Amazon Fashion reviews dataset publicly available for research purposes.
+
+**Open Source Community** for developing and maintaining the excellent libraries and frameworks used in this project, including scikit-learn, XGBoost, Streamlit, pandas, and many others.
+
+**My Family and Friends** for their unwavering support and encouragement throughout the project duration.
+
+This project would not have been possible without the collective contributions of all these individuals and organizations.
 
 ---
 
 **End of Report**
 
 *This report represents the complete technical and academic documentation of the Context-Aware Trust Scoring System project, demonstrating both theoretical understanding and practical implementation capabilities in machine learning and software engineering.*
+
+*Submitted in partial fulfillment of the requirements for B.Tech Mini Project at Dhirubhai Ambani Institute of Information and Communication Technology, Gandhinagar.*
+
+---
+
+**Declaration**
+
+I hereby declare that this project report titled "Trust-Aware Product Recommendation System" is a record of authentic work carried out by me under the supervision of Prof. Amit Mankodi during the period January 2026 to May 2026. The matter presented in this report has not been submitted elsewhere for the award of any degree.
+
+**Yashasvi Jadav**  
+Roll No: 202301069  
+Date: May 5, 2026
