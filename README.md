@@ -792,7 +792,7 @@ MIT License
 ## Contact
 
 **Project Repository:** [Repository URL]  
-**Live Demo:** [https://context-aware-trust-scoring-recommendation.streamlit.app](https://context-aware-trust-scoring-recommendation.streamlit.app)
+**Live Demo:** https://trust-scoring-system.streamlit.app/
 
 ---
 
