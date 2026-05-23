@@ -26,3 +26,10 @@ jupyter
 ipykernel
 streamlit
 plotly
+
+# Database dependencies
+psycopg2-binary>=2.9.9  # PostgreSQL adapter
+python-dotenv>=1.0.0    # Environment variable management
+python-dateutil>=2.8.2  # Date utilities for partition management
+redis>=5.0.0            # Redis cache client
+sqlalchemy>=2.0.0       # Optional: ORM support

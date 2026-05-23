@@ -1,6 +1,7 @@
 """
 Database Manager for Trust-Based Product Recommendation System
 Supports both SQLite (local) and PostgreSQL (production)
+Production-ready with connection pooling, retry logic, and health checks
 """
 
 import sqlite3
@@ -8,22 +9,36 @@ import pandas as pd
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 import os
+import time
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class DatabaseManager:
     """Manage database operations for the recommendation system"""
     
-    def __init__(self, db_type='sqlite', db_path='database/reviews.db', **kwargs):
+    def __init__(self, db_type='sqlite', db_path='database/reviews.db', 
+                 pool_size=20, max_retries=3, retry_delay=1.0, **kwargs):
         """
         Initialize database connection
         
         Args:
             db_type: 'sqlite' or 'postgresql'
             db_path: Path to SQLite database file
+            pool_size: Connection pool size (PostgreSQL only)
+            max_retries: Maximum connection retry attempts
+            retry_delay: Delay between retries in seconds
             **kwargs: PostgreSQL connection parameters (host, port, database, user, password)
         """
         self.db_type = db_type
         self.db_path = db_path
+        self.pool_size = pool_size
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
         self.conn = None
+        self.pool = None
         
         if db_type == 'sqlite':
             self._connect_sqlite()
@@ -39,34 +54,99 @@ class DatabaseManager:
         
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
-        print(f"Connected to SQLite database: {self.db_path}")
+        logger.info(f"Connected to SQLite database: {self.db_path}")
     
     def _connect_postgresql(self, host, port, database, user, password):
-        """Connect to PostgreSQL database"""
+        """Connect to PostgreSQL database with connection pooling"""
         try:
             import psycopg2
+            from psycopg2 import pool
             from psycopg2.extras import RealDictCursor
             
-            self.conn = psycopg2.connect(
+            # Create connection pool
+            self.pool = pool.SimpleConnectionPool(
+                minconn=1,
+                maxconn=self.pool_size,
                 host=host,
                 port=port,
                 database=database,
                 user=user,
                 password=password
             )
+            
+            # Get a connection from pool for initial setup
+            self.conn = self.pool.getconn()
             self.cursor_factory = RealDictCursor
-            print(f"Connected to PostgreSQL database: {database}")
+            
+            logger.info(f"Connected to PostgreSQL database: {database} (pool size: {self.pool_size})")
+            
+            # Test connection
+            if not self._health_check():
+                raise Exception("Database health check failed")
+                
         except ImportError:
             raise ImportError("psycopg2 not installed. Run: pip install psycopg2-binary")
+        except Exception as e:
+            logger.error(f"Failed to connect to PostgreSQL: {e}")
+            raise
     
-    def initialize_schema(self, schema_file='database/schema.sql'):
+    def _get_connection(self):
+        """Get a database connection with retry logic"""
+        for attempt in range(self.max_retries):
+            try:
+                if self.db_type == 'postgresql' and self.pool:
+                    # Get connection from pool
+                    conn = self.pool.getconn()
+                    # Test if connection is alive
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT 1")
+                    cursor.close()
+                    return conn
+                else:
+                    return self.conn
+                    
+            except Exception as e:
+                logger.warning(f"Connection attempt {attempt + 1} failed: {e}")
+                if attempt < self.max_retries - 1:
+                    time.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
+                else:
+                    logger.error("Max retries reached. Connection failed.")
+                    raise
+    
+    def _return_connection(self, conn):
+        """Return connection to pool (PostgreSQL only)"""
+        if self.db_type == 'postgresql' and self.pool and conn:
+            self.pool.putconn(conn)
+    
+    def _health_check(self) -> bool:
+        """Check database connection health"""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.close()
+            self._return_connection(conn)
+            return True
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
+            return False
+    
+    def initialize_schema(self, schema_file=None):
         """Initialize database schema from SQL file"""
         try:
+            # Auto-select schema file based on database type
+            if schema_file is None:
+                if self.db_type == 'postgresql':
+                    schema_file = 'database/schema_postgresql.sql'
+                else:
+                    schema_file = 'database/schema.sql'
+            
             with open(schema_file, 'r') as f:
                 schema_sql = f.read()
             
             # Execute schema
-            cursor = self.conn.cursor()
+            conn = self._get_connection()
+            cursor = conn.cursor()
             
             if self.db_type == 'sqlite':
                 # SQLite: use executescript which handles multiple statements
@@ -75,13 +155,16 @@ class DatabaseManager:
                 # PostgreSQL: can execute all at once
                 cursor.execute(schema_sql)
             
-            self.conn.commit()
-            print("Database schema initialized successfully")
+            conn.commit()
+            self._return_connection(conn)
+            logger.info("Database schema initialized successfully")
             return True
             
         except Exception as e:
-            print(f"Error initializing schema: {e}")
-            self.conn.rollback()
+            logger.error(f"Error initializing schema: {e}")
+            if conn:
+                conn.rollback()
+                self._return_connection(conn)
             return False
     
     # ========================================================================
@@ -90,83 +173,189 @@ class DatabaseManager:
     
     def insert_product(self, product_data: Dict[str, Any]) -> bool:
         """Insert a new product"""
+        conn = None
         try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                INSERT INTO products (
-                    product_id, product_name, category, brand, price,
-                    image_url, description, avg_rating, rating_std,
-                    review_count, score_raw_avg, score_count_weighted,
-                    score_trust_weighted
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                product_data.get('product_id'),
-                product_data.get('product_name'),
-                product_data.get('category'),
-                product_data.get('brand'),
-                product_data.get('price'),
-                product_data.get('image_url'),
-                product_data.get('description'),
-                product_data.get('avg_rating'),
-                product_data.get('rating_std'),
-                product_data.get('review_count', 0),
-                product_data.get('score_raw_avg'),
-                product_data.get('score_count_weighted'),
-                product_data.get('score_trust_weighted')
-            ))
-            self.conn.commit()
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            if self.db_type == 'postgresql':
+                cursor.execute("""
+                    INSERT INTO products (
+                        product_id, product_name, category, brand, price,
+                        image_url, description, avg_rating, rating_std,
+                        review_count, score_raw_avg, score_count_weighted,
+                        score_trust_weighted
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (product_id) DO NOTHING
+                """, (
+                    product_data.get('product_id'),
+                    product_data.get('product_name'),
+                    product_data.get('category'),
+                    product_data.get('brand'),
+                    product_data.get('price'),
+                    product_data.get('image_url'),
+                    product_data.get('description'),
+                    product_data.get('avg_rating'),
+                    product_data.get('rating_std'),
+                    product_data.get('review_count', 0),
+                    product_data.get('score_raw_avg'),
+                    product_data.get('score_count_weighted'),
+                    product_data.get('score_trust_weighted')
+                ))
+            else:
+                cursor.execute("""
+                    INSERT INTO products (
+                        product_id, product_name, category, brand, price,
+                        image_url, description, avg_rating, rating_std,
+                        review_count, score_raw_avg, score_count_weighted,
+                        score_trust_weighted
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    product_data.get('product_id'),
+                    product_data.get('product_name'),
+                    product_data.get('category'),
+                    product_data.get('brand'),
+                    product_data.get('price'),
+                    product_data.get('image_url'),
+                    product_data.get('description'),
+                    product_data.get('avg_rating'),
+                    product_data.get('rating_std'),
+                    product_data.get('review_count', 0),
+                    product_data.get('score_raw_avg'),
+                    product_data.get('score_count_weighted'),
+                    product_data.get('score_trust_weighted')
+                ))
+            
+            conn.commit()
+            self._return_connection(conn)
             return True
         except Exception as e:
-            print(f"Error inserting product: {e}")
-            self.conn.rollback()
+            logger.error(f"Error inserting product: {e}")
+            if conn:
+                conn.rollback()
+                self._return_connection(conn)
             return False
     
     def get_product(self, product_id: str) -> Optional[Dict]:
         """Get product by ID"""
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM products WHERE product_id = ?", (product_id,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
+        conn = None
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            if self.db_type == 'postgresql':
+                cursor.execute("SELECT * FROM products WHERE product_id = %s", (product_id,))
+            else:
+                cursor.execute("SELECT * FROM products WHERE product_id = ?", (product_id,))
+            
+            row = cursor.fetchone()
+            self._return_connection(conn)
+            return dict(row) if row else None
+        except Exception as e:
+            logger.error(f"Error getting product: {e}")
+            if conn:
+                self._return_connection(conn)
+            return None
     
     def search_products(self, query: str, limit: int = 20) -> List[Dict]:
         """Search products by name, category, or brand"""
-        cursor = self.conn.cursor()
-        search_pattern = f"%{query}%"
-        cursor.execute("""
-            SELECT * FROM products
-            WHERE product_name LIKE ? 
-               OR category LIKE ?
-               OR brand LIKE ?
-               OR product_id LIKE ?
-            ORDER BY score_trust_weighted DESC
-            LIMIT ?
-        """, (search_pattern, search_pattern, search_pattern, search_pattern, limit))
-        
-        return [dict(row) for row in cursor.fetchall()]
+        conn = None
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            search_pattern = f"%{query}%"
+            
+            if self.db_type == 'postgresql':
+                cursor.execute("""
+                    SELECT * FROM products
+                    WHERE product_name ILIKE %s 
+                       OR category ILIKE %s
+                       OR brand ILIKE %s
+                       OR product_id ILIKE %s
+                    ORDER BY score_trust_weighted DESC NULLS LAST
+                    LIMIT %s
+                """, (search_pattern, search_pattern, search_pattern, search_pattern, limit))
+            else:
+                cursor.execute("""
+                    SELECT * FROM products
+                    WHERE product_name LIKE ? 
+                       OR category LIKE ?
+                       OR brand LIKE ?
+                       OR product_id LIKE ?
+                    ORDER BY score_trust_weighted DESC
+                    LIMIT ?
+                """, (search_pattern, search_pattern, search_pattern, search_pattern, limit))
+            
+            results = [dict(row) for row in cursor.fetchall()]
+            self._return_connection(conn)
+            return results
+        except Exception as e:
+            logger.error(f"Error searching products: {e}")
+            if conn:
+                self._return_connection(conn)
+            return []
     
     def get_top_products(self, limit: int = 100, min_reviews: int = 5) -> List[Dict]:
         """Get top products by trust score"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT * FROM products
-            WHERE review_count >= ?
-            ORDER BY score_trust_weighted DESC
-            LIMIT ?
-        """, (min_reviews, limit))
-        
-        return [dict(row) for row in cursor.fetchall()]
+        conn = None
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            if self.db_type == 'postgresql':
+                cursor.execute("""
+                    SELECT * FROM products
+                    WHERE review_count >= %s
+                    ORDER BY score_trust_weighted DESC NULLS LAST
+                    LIMIT %s
+                """, (min_reviews, limit))
+            else:
+                cursor.execute("""
+                    SELECT * FROM products
+                    WHERE review_count >= ?
+                    ORDER BY score_trust_weighted DESC
+                    LIMIT ?
+                """, (min_reviews, limit))
+            
+            results = [dict(row) for row in cursor.fetchall()]
+            self._return_connection(conn)
+            return results
+        except Exception as e:
+            logger.error(f"Error getting top products: {e}")
+            if conn:
+                self._return_connection(conn)
+            return []
     
     def get_products_by_category(self, category: str, limit: int = 50) -> List[Dict]:
         """Get products by category"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT * FROM products
-            WHERE category = ?
-            ORDER BY score_trust_weighted DESC
-            LIMIT ?
-        """, (category, limit))
-        
-        return [dict(row) for row in cursor.fetchall()]
+        conn = None
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            if self.db_type == 'postgresql':
+                cursor.execute("""
+                    SELECT * FROM products
+                    WHERE category = %s
+                    ORDER BY score_trust_weighted DESC NULLS LAST
+                    LIMIT %s
+                """, (category, limit))
+            else:
+                cursor.execute("""
+                    SELECT * FROM products
+                    WHERE category = ?
+                    ORDER BY score_trust_weighted DESC
+                    LIMIT ?
+                """, (category, limit))
+            
+            results = [dict(row) for row in cursor.fetchall()]
+            self._return_connection(conn)
+            return results
+        except Exception as e:
+            logger.error(f"Error getting products by category: {e}")
+            if conn:
+                self._return_connection(conn)
+            return []
     
     # ========================================================================
     # REVIEW OPERATIONS
@@ -356,10 +545,17 @@ class DatabaseManager:
         return [dict(row) for row in cursor.fetchall()]
     
     def close(self):
-        """Close database connection"""
-        if self.conn:
-            self.conn.close()
-            print("Database connection closed")
+        """Close database connection and cleanup pool"""
+        try:
+            if self.db_type == 'postgresql' and self.pool:
+                # Close all connections in pool
+                self.pool.closeall()
+                logger.info("PostgreSQL connection pool closed")
+            elif self.conn:
+                self.conn.close()
+                logger.info("Database connection closed")
+        except Exception as e:
+            logger.error(f"Error closing connection: {e}")
     
     def __enter__(self):
         """Context manager entry"""
