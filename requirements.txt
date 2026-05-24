@@ -33,3 +33,12 @@ python-dotenv>=1.0.0    # Environment variable management
 python-dateutil>=2.8.2  # Date utilities for partition management
 redis>=5.0.0            # Redis cache client
 sqlalchemy>=2.0.0       # Optional: ORM support
+
+# FastAPI dependencies (Phase 2)
+fastapi>=0.104.0        # FastAPI framework
+uvicorn[standard]>=0.24.0  # ASGI server
+pydantic>=2.5.0         # Data validation
+python-multipart>=0.0.6 # Form data support
+python-jose[cryptography]>=3.3.0  # JWT tokens
+passlib[bcrypt]>=1.7.4  # Password hashing
+slowapi>=0.1.9          # Rate limiting
