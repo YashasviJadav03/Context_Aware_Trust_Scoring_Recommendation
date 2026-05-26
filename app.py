@@ -31,27 +31,29 @@ st.markdown("""
 @st.cache_resource
 def load_models():
     import os
-    for path in ["", "../", "./"]:
-        if os.path.exists(f"{path}models/tfidf_vectorizer.pkl"):
-            try:
-                tfidf = joblib.load(f"{path}models/tfidf_vectorizer.pkl")
-                scaler = joblib.load(f"{path}models/feature_scaler.pkl")
-                model = joblib.load(f"{path}models/trained/best_trust_model.pkl")
-                return tfidf, scaler, model
-            except:
-                pass
-    return None, None, None
+    try:
+        tfidf = joblib.load("models/tfidf_vectorizer.pkl")
+        scaler = joblib.load("models/feature_scaler.pkl")
+        model = joblib.load("models/trained/best_trust_model.pkl")
+        return tfidf, scaler, model
+    except Exception as e:
+        st.error(f"Error loading models: {e}")
+        return None, None, None
 
 @st.cache_data
 def load_data():
-    reviews = pd.read_csv("data/processed/reviews_sample.csv")
-    products = pd.read_csv("data/processed/product_trust_scores.csv")
-    
-    # Add review counts
-    review_counts = reviews.groupby('product_id').size().reset_index(name='review_count')
-    products = products.merge(review_counts, on='product_id', how='left')
-    
-    return reviews, products
+    try:
+        reviews = pd.read_csv("data/processed/reviews_sample.csv")
+        products = pd.read_csv("data/processed/product_trust_scores.csv")
+        
+        # Add review counts
+        review_counts = reviews.groupby('product_id').size().reset_index(name='review_count')
+        products = products.merge(review_counts, on='product_id', how='left')
+        
+        return reviews, products
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None, None
 
 def get_trust_color(score):
     if score >= 0.7: return "trust-high"
@@ -81,7 +83,12 @@ def extract_features(text, rating, verified):
 
 # Load everything
 tfidf_vec, scaler, model = load_models()
-reviews_df, products_df = load_data()
+data_result = load_data()
+
+if data_result is None:
+    st.stop()
+
+reviews_df, products_df = data_result
 
 # ============================================================================
 # HEADER
