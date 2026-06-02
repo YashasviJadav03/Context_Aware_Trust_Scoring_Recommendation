@@ -95,6 +95,7 @@ reviews_df, products_df = data_result
 # ============================================================================
 
 st.title("🛍️ Trust-Based Product Recommendations")
+st.caption("AI-Powered Review Analysis System")
 
 # Model Performance Metrics
 col1, col2, col3, col4, col5 = st.columns(5)
