@@ -103,11 +103,12 @@ st.markdown("""
     /* Review cards */
     .review-card {
         background: #f8fafc;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-        border-left: 4px solid #cbd5e1;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        border-left: 3px solid #cbd5e1;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        font-size: 0.85rem;
     }
     
     .review-card.high-trust {
@@ -123,6 +124,35 @@ st.markdown("""
     .review-card.low-trust {
         border-left-color: #dc2626;
         background: #fef2f2;
+    }
+    
+    /* Scrollable reviews container */
+    .reviews-scroll-container {
+        max-height: 600px;
+        overflow-y: auto;
+        padding: 1rem;
+        background: white;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+    
+    .reviews-scroll-container::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .reviews-scroll-container::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+    
+    .reviews-scroll-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    
+    .reviews-scroll-container::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
     }
     
     /* Section headers */
@@ -618,27 +648,31 @@ if search_input:
             st.divider()
             
             # Display reviews in scrollable container
+            st.markdown('<div class="reviews-scroll-container">', unsafe_allow_html=True)
+            
             for idx, (_, review) in enumerate(page_reviews.iterrows(), start=start_idx + 1):
                 review_trust_class = get_trust_color(review['trust_score'])
                 trust_level = 'high-trust' if review['trust_score'] >= 0.7 else 'medium-trust' if review['trust_score'] >= 0.4 else 'low-trust'
                 
-                # Review card
+                # Review card - compact version
                 st.markdown(f"""
                 <div class='review-card {trust_level}'>
-                    <div style='display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;'>
+                    <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;'>
                         <div>
-                            <span style='font-size: 1.2em; color: #f59e0b;'>{'⭐' * int(review['rating'])}</span>
-                            <span style='color: #64748b; margin-left: 0.5rem; font-weight: 600;'>{'✅ Verified Purchase' if review['verified'] else '❌ Unverified'}</span>
+                            <span style='font-size: 0.9em; color: #f59e0b;'>{'⭐' * int(review['rating'])}</span>
+                            <span style='color: #64748b; margin-left: 0.5rem; font-size: 0.75rem; font-weight: 600;'>{'✅ Verified' if review['verified'] else '❌ Unverified'}</span>
                         </div>
                         <div>
-                            <span class='{review_trust_class}' style='font-size: 1em;'>Trust: {review['trust_score']:.3f}</span>
+                            <span class='{review_trust_class}' style='font-size: 0.8em;'>Trust: {review['trust_score']:.3f}</span>
                         </div>
                     </div>
-                    <div style='color: #334155; line-height: 1.8; font-size: 0.95rem;'>
-                        {review['review_text']}
+                    <div style='color: #334155; line-height: 1.5; font-size: 0.85rem;'>
+                        {review['review_text'][:300]}{'...' if len(review['review_text']) > 300 else ''}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
             
             st.divider()
             
@@ -744,17 +778,24 @@ if len(filtered) > 0:
             st.markdown("---")
             st.markdown("**📝 Top Trustworthy Reviews:**")
             
-            # Show top 3 reviews
+            # Show top 3 reviews in compact format
+            st.markdown('<div style="max-height: 300px; overflow-y: auto; padding: 0.5rem;">', unsafe_allow_html=True)
             top_reviews = prod_reviews.nlargest(3, 'trust_score')
             for ridx, (_, rev) in enumerate(top_reviews.iterrows(), 1):
                 rev_class = get_trust_color(rev['trust_score'])
                 st.markdown(f"""
-                **Review {ridx}** - <span class='{rev_class}'>Trust: {rev['trust_score']:.3f}</span> | 
-                Rating: {'⭐' * int(rev['rating'])} | {'✅ Verified' if rev['verified'] else '❌ Not Verified'}
-                
-                _{rev['review_text'][:250]}{'...' if len(rev['review_text']) > 250 else ''}_
+                <div style='background: #f8fafc; padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem; font-size: 0.85rem;'>
+                    <div style='margin-bottom: 0.5rem;'>
+                        <span style='font-size: 0.9em; color: #f59e0b;'>{'⭐' * int(rev['rating'])}</span>
+                        <span class='{rev_class}' style='font-size: 0.8em; margin-left: 0.5rem;'>Trust: {rev['trust_score']:.3f}</span>
+                        <span style='color: #64748b; margin-left: 0.5rem; font-size: 0.75rem;'>{'✅ Verified' if rev['verified'] else '❌'}</span>
+                    </div>
+                    <div style='color: #475569; line-height: 1.5;'>
+                        {rev['review_text'][:200]}{'...' if len(rev['review_text']) > 200 else ''}
+                    </div>
+                </div>
                 """, unsafe_allow_html=True)
-                st.markdown("")
+            st.markdown('</div>', unsafe_allow_html=True)
 else:
     st.warning("⚠️ No products match your criteria. Try lowering the filters.")
 
