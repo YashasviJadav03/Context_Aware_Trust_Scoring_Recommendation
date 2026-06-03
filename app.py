@@ -208,30 +208,39 @@ st.divider()
 
 st.subheader("🔎 Search & Analyze Specific Product")
 
+# Check if product_name column exists
+has_product_names = 'product_name' in products_df.columns
+
 # Search input with toggle for search type
 col1, col2 = st.columns([3, 1])
 with col1:
-    search_input = st.text_input(
-        "Search Products",
-        placeholder="e.g., 'tungsten ring' or 'B00008JPRZ'",
-        help="Search by product name or ID"
-    )
+    if has_product_names:
+        search_input = st.text_input(
+            "Search Products",
+            placeholder="e.g., 'tungsten ring' or 'B00008JPRZ'",
+            help="Search by product name or ID"
+        )
+    else:
+        search_input = st.text_input(
+            "Search Products by ID",
+            placeholder="e.g., B00008JPRZ",
+            help="Enter a product ID to see detailed analysis"
+        )
 with col2:
-    search_type = st.radio(
-        "Search by",
-        ["Name", "ID"],
-        horizontal=True
-    )
+    if has_product_names:
+        search_type = st.radio(
+            "Search by",
+            ["Name", "ID"],
+            horizontal=True
+        )
+    else:
+        st.info("🔍 ID Search Only")
+        search_type = "ID"
 
 if search_input:
     # Search for products matching the input
     if search_type == "Name":
-        # Only search by name if column exists
-        if 'product_name' in products_df.columns:
-            search_results = products_df[products_df['product_name'].str.contains(search_input, case=False, na=False)]
-        else:
-            st.warning("⚠️ Product name search is not available with sample data. Please search by Product ID instead.")
-            search_results = pd.DataFrame()
+        search_results = products_df[products_df['product_name'].str.contains(search_input, case=False, na=False)]
     else:
         search_results = products_df[products_df['product_id'].str.contains(search_input, case=False, na=False)]
     
