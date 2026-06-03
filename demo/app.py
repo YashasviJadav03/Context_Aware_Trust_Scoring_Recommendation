@@ -44,43 +44,89 @@ def load_models():
 def get_db_connection():
     """Get database connection"""
     import sqlite3
-    conn = sqlite3.connect('data/processed/reviews.db', check_same_thread=False)
-    return conn
+    import os
+    
+    db_path = 'data/processed/reviews.db'
+    
+    # Check if database exists and has data
+    if os.path.exists(db_path):
+        try:
+            conn = sqlite3.connect(db_path, check_same_thread=False)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = cursor.fetchall()
+            if tables:
+                return conn
+        except:
+            pass
+    
+    # If database doesn't exist or is empty, return None
+    return None
 
 @st.cache_data
 def load_data():
     """Load products metadata"""
     try:
         conn = get_db_connection()
-        products = pd.read_sql("SELECT * FROM products", conn)
-        return products
+        
+        if conn:
+            # Use database if available
+            products = pd.read_sql("SELECT * FROM products", conn)
+            return products
+        else:
+            # Fallback to CSV
+            products = pd.read_csv("data/processed/product_trust_scores.csv")
+            return products
     except Exception as e:
-        st.error(f"Error loading data: {e}")
-        st.stop()
+        # Final fallback to CSV
+        try:
+            products = pd.read_csv("data/processed/product_trust_scores.csv")
+            return products
+        except:
+            st.error(f"Error loading data: {e}")
+            st.stop()
 
 @st.cache_data
 def load_product_reviews(product_id):
     """Load all reviews for a specific product - FAST with indexed database"""
     try:
         conn = get_db_connection()
-        query = "SELECT * FROM reviews WHERE product_id = ?"
-        reviews = pd.read_sql(query, conn, params=(product_id,))
-        return reviews
+        
+        if conn:
+            # Use database if available
+            query = "SELECT * FROM reviews WHERE product_id = ?"
+            reviews = pd.read_sql(query, conn, params=(product_id,))
+            if len(reviews) > 0:
+                return reviews
+        
+        # Fallback to sample CSV
+        reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
+        return reviews_sample[reviews_sample['product_id'] == product_id]
+        
     except Exception as e:
-        st.error(f"Error loading reviews: {e}")
-        return pd.DataFrame()
+        # Fallback to sample CSV
+        reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
+        return reviews_sample[reviews_sample['product_id'] == product_id]
 
 @st.cache_data
 def load_sample_reviews(limit=10000):
     """Load sample reviews for recommendations display"""
     try:
         conn = get_db_connection()
-        query = "SELECT * FROM reviews ORDER BY RANDOM() LIMIT ?"
-        reviews = pd.read_sql(query, conn, params=(limit,))
-        return reviews
+        
+        if conn:
+            # Use database if available
+            query = "SELECT * FROM reviews ORDER BY RANDOM() LIMIT ?"
+            reviews = pd.read_sql(query, conn, params=(limit,))
+            if len(reviews) > 0:
+                return reviews
+        
+        # Fallback to sample CSV
+        return pd.read_csv("data/processed/reviews_sample.csv")
+        
     except Exception as e:
-        st.error(f"Error loading sample: {e}")
-        return pd.DataFrame()
+        # Fallback to sample CSV
+        return pd.read_csv("data/processed/reviews_sample.csv")
 
 def get_trust_color(score):
     if score >= 0.7: return "trust-high"
@@ -112,6 +158,13 @@ def extract_features(text, rating, verified):
 tfidf_vec, scaler, model = load_models()
 products_df = load_data()
 reviews_df = load_sample_reviews(10000)  # Sample for recommendations
+
+# Check if using database or fallback
+conn = get_db_connection()
+if conn:
+    st.sidebar.success("✅ Using full database (883K reviews)")
+else:
+    st.sidebar.info("ℹ️ Using sample data (10K reviews)")
 
 if products_df is None or len(products_df) == 0:
     st.error("Failed to load data. Please check database exists.")
