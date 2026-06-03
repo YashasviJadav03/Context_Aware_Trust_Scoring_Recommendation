@@ -40,16 +40,47 @@ def load_models():
         st.error(f"Error loading models: {e}")
         return None, None, None
 
+@st.cache_resource
+def get_db_connection():
+    """Get database connection"""
+    import sqlite3
+    conn = sqlite3.connect('data/processed/reviews.db', check_same_thread=False)
+    return conn
+
 @st.cache_data
 def load_data():
+    """Load products metadata"""
     try:
-        reviews = pd.read_csv("data/processed/reviews_sample.csv")
-        products = pd.read_csv("data/processed/product_trust_scores.csv")
-        
-        return reviews, products
+        conn = get_db_connection()
+        products = pd.read_sql("SELECT * FROM products", conn)
+        return products
     except Exception as e:
         st.error(f"Error loading data: {e}")
         st.stop()
+
+@st.cache_data
+def load_product_reviews(product_id):
+    """Load all reviews for a specific product - FAST with indexed database"""
+    try:
+        conn = get_db_connection()
+        query = "SELECT * FROM reviews WHERE product_id = ?"
+        reviews = pd.read_sql(query, conn, params=(product_id,))
+        return reviews
+    except Exception as e:
+        st.error(f"Error loading reviews: {e}")
+        return pd.DataFrame()
+
+@st.cache_data
+def load_sample_reviews(limit=10000):
+    """Load sample reviews for recommendations display"""
+    try:
+        conn = get_db_connection()
+        query = "SELECT * FROM reviews ORDER BY RANDOM() LIMIT ?"
+        reviews = pd.read_sql(query, conn, params=(limit,))
+        return reviews
+    except Exception as e:
+        st.error(f"Error loading sample: {e}")
+        return pd.DataFrame()
 
 def get_trust_color(score):
     if score >= 0.7: return "trust-high"
@@ -79,10 +110,11 @@ def extract_features(text, rating, verified):
 
 # Load everything
 tfidf_vec, scaler, model = load_models()
-reviews_df, products_df = load_data()
+products_df = load_data()
+reviews_df = load_sample_reviews(10000)  # Sample for recommendations
 
-if reviews_df is None or products_df is None:
-    st.error("Failed to load data. Please check data files exist.")
+if products_df is None or len(products_df) == 0:
+    st.error("Failed to load data. Please check database exists.")
     st.stop()
 
 # ============================================================================
@@ -143,7 +175,10 @@ if search_input:
         
         # Get selected product data
         product = products_df[products_df['product_id'] == selected_product_id].iloc[0]
-        product_reviews = reviews_df[reviews_df['product_id'] == selected_product_id]
+        
+        # Load ALL reviews for this specific product
+        with st.spinner(f"Loading all reviews for {selected_product_id}..."):
+            product_reviews = load_product_reviews(selected_product_id)
         
         st.markdown(f"### Product: **{selected_product_id}**")
         
@@ -160,8 +195,7 @@ if search_input:
             st.progress(product['avg_rating'] / 5.0)
         
         with col3:
-            st.metric("Total Reviews", f"{int(product['review_count'])} total")
-            st.caption(f"{len(product_reviews)} in sample")
+            st.metric("Total Reviews", int(product['review_count']))
         
         with col4:
             verified_pct = (product_reviews['verified'].sum() / len(product_reviews)) * 100
@@ -237,7 +271,7 @@ if search_input:
         elif sort_by == "Rating (Low to High)":
             filtered_reviews = filtered_reviews.sort_values('rating', ascending=True)
         
-        st.info(f"Showing **{len(filtered_reviews)}** of **{len(product_reviews)}** reviews in sample (product has {int(product['review_count'])} total reviews)")
+        st.info(f"Showing **{len(filtered_reviews)}** of **{len(product_reviews)}** reviews")
         
         # Display reviews
         for idx, (_, review) in enumerate(filtered_reviews.iterrows(), 1):
