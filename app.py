@@ -201,28 +201,45 @@ st.divider()
 
 st.subheader("🔎 Search & Analyze Specific Product")
 
-# Search input
-search_input = st.text_input(
-    "Search by Product ID",
-    placeholder="e.g., B00008JPRZ",
-    help="Enter a product ID to see detailed analysis"
-)
+# Search input with toggle for search type
+col1, col2 = st.columns([3, 1])
+with col1:
+    search_input = st.text_input(
+        "Search Products",
+        placeholder="e.g., 'tungsten ring' or 'B00008JPRZ'",
+        help="Search by product name or ID"
+    )
+with col2:
+    search_type = st.radio(
+        "Search by",
+        ["Name", "ID"],
+        horizontal=True
+    )
 
 if search_input:
     # Search for products matching the input
-    search_results = products_df[products_df['product_id'].str.contains(search_input, case=False, na=False)]
+    if search_type == "Name":
+        search_results = products_df[products_df['product_name'].str.contains(search_input, case=False, na=False)]
+    else:
+        search_results = products_df[products_df['product_id'].str.contains(search_input, case=False, na=False)]
     
     if len(search_results) > 0:
         st.success(f"✅ Found {len(search_results)} product(s) matching '{search_input}'")
         
-        st.info("ℹ️ **Note**: This demo uses a sample of reviews (10,000 total). Some products may show fewer reviews than their actual total.")
-        
-        # If multiple results, show selection
+        # If multiple results, show selection with product names
         if len(search_results) > 1:
-            selected_product_id = st.selectbox(
+            # Create display options with both name and ID
+            display_options = []
+            for _, row in search_results.iterrows():
+                name = row['product_name'] if row['product_name'] else 'Unknown Product'
+                display_options.append(f"{name[:60]}... ({row['product_id']})")
+            
+            selected_display = st.selectbox(
                 "Select a product to analyze:",
-                search_results['product_id'].tolist()
+                display_options
             )
+            # Extract product_id from the selected display option
+            selected_product_id = selected_display.split('(')[-1].strip(')')
         else:
             selected_product_id = search_results['product_id'].iloc[0]
         
@@ -236,9 +253,29 @@ if search_input:
         # Update review count to actual loaded reviews
         actual_review_count = len(product_reviews)
         
-        st.markdown(f"### Product: **{selected_product_id}**")
+        # Display product header with image
+        col_img, col_info = st.columns([1, 3])
+        
+        with col_img:
+            if product['image_url']:
+                try:
+                    st.image(product['image_url'], use_container_width=True)
+                except:
+                    st.image("https://via.placeholder.com/300x300?text=No+Image", use_container_width=True)
+            else:
+                st.image("https://via.placeholder.com/300x300?text=No+Image", use_container_width=True)
+        
+        with col_info:
+            product_name = product['product_name'] if product['product_name'] else 'Unknown Product'
+            st.markdown(f"### {product_name}")
+            st.caption(f"**Product ID:** {selected_product_id}")
+            if product['brand']:
+                st.caption(f"**Brand:** {product['brand']}")
+        
+        st.divider()
         
         # Product overview metrics
+        st.markdown("### 📊 Product Metrics")
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
@@ -457,7 +494,30 @@ if len(filtered) > 0:
     for idx, (_, prod) in enumerate(filtered.head(15).iterrows(), 1):
         trust_class = get_trust_color(prod['score_trust_weighted'])
         
-        with st.expander(f"**#{idx}. {prod['product_id']}** - Trust: {prod['score_trust_weighted']:.3f} | Rating: {prod['avg_rating']:.1f}⭐ | Reviews: {prod['review_count']}"):
+        # Get product name
+        prod_name = prod['product_name'] if prod['product_name'] else 'Unknown Product'
+        
+        with st.expander(f"**#{idx}. {prod_name[:60]}{'...' if len(prod_name) > 60 else ''}** - Trust: {prod['score_trust_weighted']:.3f} | Rating: {prod['avg_rating']:.1f}⭐"):
+            
+            # Product image and info
+            col_img, col_details = st.columns([1, 3])
+            
+            with col_img:
+                if prod['image_url']:
+                    try:
+                        st.image(prod['image_url'], use_container_width=True)
+                    except:
+                        st.write("📦 No Image")
+                else:
+                    st.write("📦 No Image")
+            
+            with col_details:
+                st.markdown(f"**{prod_name}**")
+                st.caption(f"Product ID: {prod['product_id']}")
+                if prod['brand']:
+                    st.caption(f"Brand: {prod['brand']}")
+            
+            st.markdown("---")
             
             # Product metrics
             col1, col2, col3, col4 = st.columns(4)
