@@ -17,10 +17,175 @@ st.set_page_config(page_title="Trust-Based Recommendations", page_icon="🛍️"
 
 st.markdown("""
 <style>
-    .trust-high { color: #27ae60; font-weight: bold; font-size: 1.2em; }
-    .trust-medium { color: #f39c12; font-weight: bold; font-size: 1.2em; }
-    .trust-low { color: #e74c3c; font-weight: bold; font-size: 1.2em; }
-    .metric-box { background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #3498db; }
+    /* Main theme colors */
+    :root {
+        --primary-color: #1e3a8a;
+        --secondary-color: #3b82f6;
+        --success-color: #059669;
+        --warning-color: #d97706;
+        --danger-color: #dc2626;
+    }
+    
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* Custom header styling */
+    .main-header {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .main-header h1 {
+        color: white;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .main-header p {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.1rem;
+    }
+    
+    /* Trust score colors */
+    .trust-high { 
+        color: #059669; 
+        font-weight: 700; 
+        font-size: 1.2em; 
+    }
+    .trust-medium { 
+        color: #d97706; 
+        font-weight: 700; 
+        font-size: 1.2em; 
+    }
+    .trust-low { 
+        color: #dc2626; 
+        font-weight: 700; 
+        font-size: 1.2em; 
+    }
+    
+    /* Metric boxes */
+    .metric-box { 
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        padding: 1.5rem;
+        border-radius: 10px;
+        border-left: 4px solid #3b82f6;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s;
+    }
+    
+    .metric-box:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Product cards */
+    .product-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s;
+    }
+    
+    .product-card:hover {
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        border-color: #3b82f6;
+    }
+    
+    /* Review cards */
+    .review-card {
+        background: #f8fafc;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        border-left: 4px solid #cbd5e1;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .review-card.high-trust {
+        border-left-color: #059669;
+        background: #f0fdf4;
+    }
+    
+    .review-card.medium-trust {
+        border-left-color: #d97706;
+        background: #fffbeb;
+    }
+    
+    .review-card.low-trust {
+        border-left-color: #dc2626;
+        background: #fef2f2;
+    }
+    
+    /* Section headers */
+    .section-header {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    /* Info badges */
+    .info-badge {
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        display: inline-block;
+        margin: 0.5rem 0;
+    }
+    
+    /* Stats container */
+    .stats-container {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Streamlit override */
+    .stExpander {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stButton>button {
+        background: #3b82f6;
+        color: white;
+        border-radius: 6px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 600;
+        border: none;
+        transition: all 0.2s;
+    }
+    
+    .stButton>button:hover {
+        background: #2563eb;
+        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Product image container */
+    .product-image {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -181,24 +346,32 @@ if products_df is None or len(products_df) == 0:
 # HEADER
 # ============================================================================
 
-st.title("🛍️ Trust-Based Product Recommendations")
-st.caption("AI-Powered Review Analysis System")
+# Main header with gradient background
+st.markdown("""
+<div class="main-header">
+    <h1>🛍️ Trust-Based Product Recommendation System</h1>
+    <p>Advanced AI-Powered Review Analysis & Trust Scoring Platform</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Model Performance Metrics
+st.markdown('<div class="stats-container">', unsafe_allow_html=True)
+st.markdown("### 📊 System Overview")
 col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
-    st.metric("Products", f"{len(products_df)}")
+    st.metric("Total Products", f"{len(products_df):,}", help="Unique products analyzed")
 with col2:
-    st.metric("Reviews", f"{len(reviews_df):,}")
+    st.metric("Total Reviews", f"{len(reviews_df):,}", help="Reviews processed")
 with col3:
     avg_reviews = reviews_df.groupby('product_id').size().mean()
-    st.metric("Avg Reviews/Product", f"{avg_reviews:.0f}")
+    st.metric("Avg Reviews/Product", f"{avg_reviews:.0f}", help="Average reviews per product")
 with col4:
-    st.metric("Model R² Score", "0.847")
+    st.metric("Model R² Score", "0.847", help="84.7% variance explained", delta="High Accuracy")
 with col5:
-    st.metric("Model MAE", "0.082")
+    st.metric("Model MAE", "0.082", help="Mean Absolute Error", delta="-0.082", delta_color="inverse")
 
-st.info("💡 **Model Accuracy**: R² = 0.847 means the model explains 84.7% of trust score variance. MAE = 0.082 means predictions are typically within ±0.08 of actual trust scores.")
+st.info("ℹ️ **Model Performance**: Our XGBoost model achieves R² = 0.847, explaining 84.7% of trust score variance with MAE = 0.082 (±8.2% prediction accuracy).")
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.divider()
 
@@ -206,7 +379,7 @@ st.divider()
 # PRODUCT SEARCH & ANALYSIS
 # ============================================================================
 
-st.subheader("🔎 Search & Analyze Specific Product")
+st.markdown('<p class="section-header">🔎 Product Search & Analysis</p>', unsafe_allow_html=True)
 
 # Check if product_name column exists
 has_product_names = 'product_name' in products_df.columns
@@ -281,13 +454,16 @@ if search_input:
         actual_review_count = len(product_reviews)
         
         # Display product header with image
+        st.markdown('<div class="product-card">', unsafe_allow_html=True)
         col_img, col_info = st.columns([1, 3])
         
         with col_img:
             image_url = safe_get(product, 'image_url', None)
             if image_url:
                 try:
+                    st.markdown('<div class="product-image">', unsafe_allow_html=True)
                     st.image(image_url, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
                 except:
                     st.image("https://via.placeholder.com/300x300?text=No+Image", use_container_width=True)
             else:
@@ -295,16 +471,17 @@ if search_input:
         
         with col_info:
             product_name = safe_get(product, 'product_name', f'Product {selected_product_id}')
-            st.markdown(f"### {product_name}")
-            st.caption(f"**Product ID:** {selected_product_id}")
+            st.markdown(f"## {product_name}")
+            st.caption(f"**Product ID:** `{selected_product_id}`")
             brand = safe_get(product, 'brand', None)
             if brand:
-                st.caption(f"**Brand:** {brand}")
+                st.markdown(f'<span class="info-badge">🏷️ Brand: {brand}</span>', unsafe_allow_html=True)
         
-        st.divider()
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
         
         # Product overview metrics
-        st.markdown("### 📊 Product Metrics")
+        st.markdown('<p class="section-header">📊 Product Performance Metrics</p>', unsafe_allow_html=True)
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
@@ -330,7 +507,7 @@ if search_input:
         st.divider()
         
         # Review statistics
-        st.markdown("### 📊 Review Statistics")
+        st.markdown('<p class="section-header">📊 Review Distribution Statistics</p>', unsafe_allow_html=True)
         
         col1, col2 = st.columns(2)
         
@@ -360,7 +537,7 @@ if search_input:
         st.divider()
         
         # All reviews section
-        st.markdown("### 📝 Customer Reviews")
+        st.markdown('<p class="section-header">📝 Customer Reviews</p>', unsafe_allow_html=True)
         
         # Review controls
         col1, col2, col3, col4 = st.columns(4)
@@ -443,20 +620,21 @@ if search_input:
             # Display reviews in scrollable container
             for idx, (_, review) in enumerate(page_reviews.iterrows(), start=start_idx + 1):
                 review_trust_class = get_trust_color(review['trust_score'])
+                trust_level = 'high-trust' if review['trust_score'] >= 0.7 else 'medium-trust' if review['trust_score'] >= 0.4 else 'low-trust'
                 
                 # Review card
                 st.markdown(f"""
-                <div style='background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid {"#27ae60" if review["trust_score"] >= 0.7 else "#f39c12" if review["trust_score"] >= 0.4 else "#e74c3c"};'>
+                <div class='review-card {trust_level}'>
                     <div style='display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;'>
                         <div>
-                            <span style='font-size: 1.2em; color: #f39c12;'>{'⭐' * int(review['rating'])}</span>
-                            <span style='color: #7f8c8d; margin-left: 0.5rem;'>{'✅ Verified Purchase' if review['verified'] else '❌ Unverified'}</span>
+                            <span style='font-size: 1.2em; color: #f59e0b;'>{'⭐' * int(review['rating'])}</span>
+                            <span style='color: #64748b; margin-left: 0.5rem; font-weight: 600;'>{'✅ Verified Purchase' if review['verified'] else '❌ Unverified'}</span>
                         </div>
                         <div>
-                            <span class='{review_trust_class}' style='font-size: 0.9em;'>Trust: {review['trust_score']:.3f}</span>
+                            <span class='{review_trust_class}' style='font-size: 1em;'>Trust: {review['trust_score']:.3f}</span>
                         </div>
                     </div>
-                    <div style='color: #2c3e50; line-height: 1.6;'>
+                    <div style='color: #334155; line-height: 1.8; font-size: 0.95rem;'>
                         {review['review_text']}
                     </div>
                 </div>
@@ -502,7 +680,7 @@ st.divider()
 # RECOMMENDATIONS
 # ============================================================================
 
-st.subheader("🎯 Find Trustworthy Products")
+st.markdown('<p class="section-header">🎯 Discover Trustworthy Products</p>', unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 with col1:
@@ -586,8 +764,8 @@ st.divider()
 # REVIEW ANALYZER
 # ============================================================================
 
-st.subheader("🔍 Test Review Trust Score")
-st.markdown("Enter a review to see how trustworthy it appears based on our ML model")
+st.markdown('<p class="section-header">🔍 AI Review Trust Analyzer</p>', unsafe_allow_html=True)
+st.markdown("Test any review text to see how our AI model evaluates its trustworthiness")
 
 col1, col2 = st.columns([3, 1])
 
@@ -664,4 +842,13 @@ st.divider()
 # FOOTER
 # ============================================================================
 
-st.caption("🤖 Powered by XGBoost ML Model | Trust scores based on 10+ features including text analysis, sentiment, and behavioral patterns")
+st.markdown("""
+<div style='text-align: center; padding: 2rem; background: #f8fafc; border-radius: 10px; margin-top: 2rem;'>
+    <p style='color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem;'>
+        <strong>🤖 Powered by Advanced Machine Learning</strong>
+    </p>
+    <p style='color: #94a3b8; font-size: 0.85rem;'>
+        XGBoost Model | 10+ Features | Text Analysis | Sentiment Detection | Behavioral Patterns
+    </p>
+</div>
+""", unsafe_allow_html=True)
