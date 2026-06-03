@@ -233,6 +233,9 @@ if search_input:
         with st.spinner(f"Loading all reviews for {selected_product_id}..."):
             product_reviews = load_product_reviews(selected_product_id)
         
+        # Update review count to actual loaded reviews
+        actual_review_count = len(product_reviews)
+        
         st.markdown(f"### Product: **{selected_product_id}**")
         
         # Product overview metrics
@@ -248,7 +251,7 @@ if search_input:
             st.progress(product['avg_rating'] / 5.0)
         
         with col3:
-            st.metric("Total Reviews", int(product['review_count']))
+            st.metric("Total Reviews", actual_review_count)
         
         with col4:
             verified_pct = (product_reviews['verified'].sum() / len(product_reviews)) * 100
