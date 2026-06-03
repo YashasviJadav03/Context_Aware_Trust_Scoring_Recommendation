@@ -406,64 +406,6 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.divider()
 
 # ============================================================================
-# IMAGE SEARCH
-# ============================================================================
-
-st.markdown('<p class="section-header">📸 Visual Product Search</p>', unsafe_allow_html=True)
-st.markdown("Upload an image to find similar products based on visual similarity")
-
-col1, col2 = st.columns([1, 1])
-
-with col1:
-    uploaded_file = st.file_uploader("Upload Product Image", type=['png', 'jpg', 'jpeg'], help="Upload an image to find similar products")
-    
-    if uploaded_file is not None:
-        from PIL import Image
-        import io
-        
-        # Display uploaded image
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_container_width=True)
-        
-        # Simple color-based similarity (placeholder for actual ML-based similarity)
-        st.info("🔍 **Note**: Visual search is based on image features. For best results, upload clear product images.")
-
-with col2:
-    if uploaded_file is not None:
-        st.markdown("### 🔎 Similar Products Found")
-        st.warning("⚠️ **Demo Mode**: Visual similarity search requires ML model integration. Showing top-rated products instead.")
-        
-        # Show top products as placeholder
-        similar_products = products_df.nlargest(5, 'score_trust_weighted')
-        
-        for idx, (_, prod) in enumerate(similar_products.iterrows(), 1):
-            with st.container():
-                img_col, info_col = st.columns([1, 2])
-                
-                with img_col:
-                    image_url = safe_get(prod, 'image_url', None)
-                    if image_url:
-                        try:
-                            st.image(image_url, use_container_width=True)
-                        except:
-                            st.write("📦")
-                    else:
-                        st.write("📦 No Image")
-                
-                with info_col:
-                    prod_name = safe_get(prod, 'product_name', f'Product {prod["product_id"]}')
-                    st.markdown(f"**{prod_name[:50]}...**")
-                    st.caption(f"Trust: {prod['score_trust_weighted']:.3f} | Rating: {prod['avg_rating']:.1f}⭐")
-                    
-                    if st.button(f"View Details", key=f"img_search_{prod['product_id']}"):
-                        st.session_state['search_product'] = prod['product_id']
-                        st.rerun()
-                
-                st.divider()
-
-st.divider()
-
-# ============================================================================
 # PRODUCT SEARCH & ANALYSIS
 # ============================================================================
 
@@ -472,70 +414,38 @@ st.markdown('<p class="section-header">🔎 Product Search & Analysis</p>', unsa
 # Check if product_name column exists
 has_product_names = 'product_name' in products_df.columns
 
-# Handle suggested search
-if 'suggested_search' in st.session_state:
-    default_search = st.session_state['suggested_search']
-    del st.session_state['suggested_search']
-else:
-    default_search = ""
-
-# Check if there's a product selected from image search
-if 'search_product' in st.session_state:
-    search_input = st.session_state['search_product']
-    search_type = "ID"
-    del st.session_state['search_product']  # Clear after use
-else:
-    # Search input with toggle for search type
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        if has_product_names:
-            search_input = st.text_input(
-                "Search Products",
-                value=default_search,
-                placeholder="e.g., 'tungsten ring' or 'B00008JPRZ'",
-                help="Search by product name or ID"
-            )
-        else:
-            search_input = st.text_input(
-                "Search Products by ID",
-                value=default_search,
-                placeholder="e.g., B00008JPRZ",
-                help="Enter a product ID to see detailed analysis"
-            )
-    with col2:
-        if has_product_names:
-            search_type = st.radio(
-                "Search by",
-                ["Name", "ID"],
-                horizontal=True
-            )
-        else:
-            st.info("🔍 ID Search Only")
-            search_type = "ID"
+# Search input with toggle for search type
+col1, col2 = st.columns([3, 1])
+with col1:
+    if has_product_names:
+        search_input = st.text_input(
+            "Search Products",
+            placeholder="e.g., 'tungsten ring' or 'B00008JPRZ'",
+            help="Search by product name or ID"
+        )
+    else:
+        search_input = st.text_input(
+            "Search Products by ID",
+            placeholder="e.g., B00008JPRZ",
+            help="Enter a product ID to see detailed analysis"
+        )
+with col2:
+    if has_product_names:
+        search_type = st.radio(
+            "Search by",
+            ["Name", "ID"],
+            horizontal=True
+        )
+    else:
+        st.info("🔍 ID Search Only")
+        search_type = "ID"
 
 if search_input:
     # Search for products matching the input
     if search_type == "Name":
         search_results = products_df[products_df['product_name'].str.contains(search_input, case=False, na=False)]
-        
-        # If no results, show suggestions
-        if len(search_results) == 0:
-            st.warning(f"⚠️ No products found matching '{search_input}'")
-            
-            # Show popular search terms / categories
-            st.markdown("**💡 Try searching for:**")
-            popular_terms = ["ring", "coat", "shirt", "shoes", "watch", "jewelry", "clothing", "accessories"]
-            cols = st.columns(4)
-            for idx, term in enumerate(popular_terms):
-                with cols[idx % 4]:
-                    if st.button(term.title(), key=f"suggest_{term}"):
-                        st.session_state['suggested_search'] = term
-                        st.rerun()
     else:
         search_results = products_df[products_df['product_id'].str.contains(search_input, case=False, na=False)]
-        
-        if len(search_results) == 0:
-            st.warning(f"⚠️ No products found with ID containing '{search_input}'. Please check the Product ID and try again.")
     
     if len(search_results) > 0:
         st.success(f"✅ Found {len(search_results)} product(s) matching '{search_input}'")
