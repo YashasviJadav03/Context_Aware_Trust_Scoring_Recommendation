@@ -133,6 +133,13 @@ def get_trust_color(score):
     elif score >= 0.4: return "trust-medium"
     else: return "trust-low"
 
+def safe_get(row, column, default=''):
+    """Safely get column value, return default if column doesn't exist"""
+    try:
+        return row[column] if column in row.index and pd.notna(row[column]) and row[column] else default
+    except:
+        return default
+
 def extract_features(text, rating, verified):
     """Extract features for prediction"""
     if pd.isna(text) or text == "":
@@ -219,7 +226,12 @@ with col2:
 if search_input:
     # Search for products matching the input
     if search_type == "Name":
-        search_results = products_df[products_df['product_name'].str.contains(search_input, case=False, na=False)]
+        # Only search by name if column exists
+        if 'product_name' in products_df.columns:
+            search_results = products_df[products_df['product_name'].str.contains(search_input, case=False, na=False)]
+        else:
+            st.warning("⚠️ Product name search is not available with sample data. Please search by Product ID instead.")
+            search_results = pd.DataFrame()
     else:
         search_results = products_df[products_df['product_id'].str.contains(search_input, case=False, na=False)]
     
@@ -231,15 +243,21 @@ if search_input:
             # Create display options with both name and ID
             display_options = []
             for _, row in search_results.iterrows():
-                name = row['product_name'] if row['product_name'] else 'Unknown Product'
-                display_options.append(f"{name[:60]}... ({row['product_id']})")
+                name = safe_get(row, 'product_name', 'Unknown Product')
+                if name and name != 'Unknown Product':
+                    display_options.append(f"{name[:60]}... ({row['product_id']})")
+                else:
+                    display_options.append(f"{row['product_id']}")
             
             selected_display = st.selectbox(
                 "Select a product to analyze:",
                 display_options
             )
             # Extract product_id from the selected display option
-            selected_product_id = selected_display.split('(')[-1].strip(')')
+            if '(' in selected_display:
+                selected_product_id = selected_display.split('(')[-1].strip(')')
+            else:
+                selected_product_id = selected_display
         else:
             selected_product_id = search_results['product_id'].iloc[0]
         
@@ -257,20 +275,22 @@ if search_input:
         col_img, col_info = st.columns([1, 3])
         
         with col_img:
-            if product['image_url']:
+            image_url = safe_get(product, 'image_url', None)
+            if image_url:
                 try:
-                    st.image(product['image_url'], use_container_width=True)
+                    st.image(image_url, use_container_width=True)
                 except:
                     st.image("https://via.placeholder.com/300x300?text=No+Image", use_container_width=True)
             else:
                 st.image("https://via.placeholder.com/300x300?text=No+Image", use_container_width=True)
         
         with col_info:
-            product_name = product['product_name'] if product['product_name'] else 'Unknown Product'
+            product_name = safe_get(product, 'product_name', f'Product {selected_product_id}')
             st.markdown(f"### {product_name}")
             st.caption(f"**Product ID:** {selected_product_id}")
-            if product['brand']:
-                st.caption(f"**Brand:** {product['brand']}")
+            brand = safe_get(product, 'brand', None)
+            if brand:
+                st.caption(f"**Brand:** {brand}")
         
         st.divider()
         
@@ -494,8 +514,8 @@ if len(filtered) > 0:
     for idx, (_, prod) in enumerate(filtered.head(15).iterrows(), 1):
         trust_class = get_trust_color(prod['score_trust_weighted'])
         
-        # Get product name
-        prod_name = prod['product_name'] if prod['product_name'] else 'Unknown Product'
+        # Get product name safely
+        prod_name = safe_get(prod, 'product_name', f'Product {prod["product_id"]}')
         
         with st.expander(f"**#{idx}. {prod_name[:60]}{'...' if len(prod_name) > 60 else ''}** - Trust: {prod['score_trust_weighted']:.3f} | Rating: {prod['avg_rating']:.1f}⭐"):
             
@@ -503,9 +523,10 @@ if len(filtered) > 0:
             col_img, col_details = st.columns([1, 3])
             
             with col_img:
-                if prod['image_url']:
+                image_url = safe_get(prod, 'image_url', None)
+                if image_url:
                     try:
-                        st.image(prod['image_url'], use_container_width=True)
+                        st.image(image_url, use_container_width=True)
                     except:
                         st.write("📦 No Image")
                 else:
@@ -514,8 +535,9 @@ if len(filtered) > 0:
             with col_details:
                 st.markdown(f"**{prod_name}**")
                 st.caption(f"Product ID: {prod['product_id']}")
-                if prod['brand']:
-                    st.caption(f"Brand: {prod['brand']}")
+                brand = safe_get(prod, 'brand', None)
+                if brand:
+                    st.caption(f"Brand: {brand}")
             
             st.markdown("---")
             
