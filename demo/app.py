@@ -49,11 +49,12 @@ def load_data():
         # Add review counts
         review_counts = reviews.groupby('product_id').size().reset_index(name='review_count')
         products = products.merge(review_counts, on='product_id', how='left')
+        products['review_count'] = products['review_count'].fillna(0).astype(int)
         
         return reviews, products
     except Exception as e:
         st.error(f"Error loading data: {e}")
-        return None, None
+        st.stop()
 
 def get_trust_color(score):
     if score >= 0.7: return "trust-high"
@@ -83,12 +84,11 @@ def extract_features(text, rating, verified):
 
 # Load everything
 tfidf_vec, scaler, model = load_models()
-data_result = load_data()
+reviews_df, products_df = load_data()
 
-if data_result is None:
+if reviews_df is None or products_df is None:
+    st.error("Failed to load data. Please check data files exist.")
     st.stop()
-
-reviews_df, products_df = data_result
 
 # ============================================================================
 # HEADER
