@@ -130,6 +130,8 @@ if search_input:
     if len(search_results) > 0:
         st.success(f"✅ Found {len(search_results)} product(s) matching '{search_input}'")
         
+        st.info("ℹ️ **Note**: This demo uses a sample of reviews (10,000 total). Some products may show fewer reviews than their actual total.")
+        
         # If multiple results, show selection
         if len(search_results) > 1:
             selected_product_id = st.selectbox(
@@ -158,7 +160,8 @@ if search_input:
             st.progress(product['avg_rating'] / 5.0)
         
         with col3:
-            st.metric("Total Reviews", int(product['review_count']))
+            st.metric("Total Reviews", f"{int(product['review_count'])} total")
+            st.caption(f"{len(product_reviews)} in sample")
         
         with col4:
             verified_pct = (product_reviews['verified'].sum() / len(product_reviews)) * 100
@@ -234,7 +237,7 @@ if search_input:
         elif sort_by == "Rating (Low to High)":
             filtered_reviews = filtered_reviews.sort_values('rating', ascending=True)
         
-        st.info(f"Showing **{len(filtered_reviews)}** of **{len(product_reviews)}** reviews")
+        st.info(f"Showing **{len(filtered_reviews)}** of **{len(product_reviews)}** reviews in sample (product has {int(product['review_count'])} total reviews)")
         
         # Display reviews
         for idx, (_, review) in enumerate(filtered_reviews.iterrows(), 1):
