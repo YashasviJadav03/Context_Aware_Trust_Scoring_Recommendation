@@ -647,15 +647,18 @@ if search_input:
             
             st.divider()
             
-            # Display reviews in scrollable container
-            st.markdown('<div class="reviews-scroll-container">', unsafe_allow_html=True)
+            # Display reviews in scrollable container using HTML
+            reviews_html = '<div class="reviews-scroll-container">'
             
             for idx, (_, review) in enumerate(page_reviews.iterrows(), start=start_idx + 1):
                 review_trust_class = get_trust_color(review['trust_score'])
                 trust_level = 'high-trust' if review['trust_score'] >= 0.7 else 'medium-trust' if review['trust_score'] >= 0.4 else 'low-trust'
                 
-                # Review card - compact version
-                st.markdown(f"""
+                # Escape any HTML in review text
+                review_text = str(review['review_text']).replace('<', '&lt;').replace('>', '&gt;')
+                
+                # Review card - compact version with full text
+                reviews_html += f"""
                 <div class='review-card {trust_level}'>
                     <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;'>
                         <div>
@@ -667,12 +670,13 @@ if search_input:
                         </div>
                     </div>
                     <div style='color: #334155; line-height: 1.5; font-size: 0.85rem;'>
-                        {review['review_text'][:300]}{'...' if len(review['review_text']) > 300 else ''}
+                        {review_text}
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
+                """
             
-            st.markdown('</div>', unsafe_allow_html=True)
+            reviews_html += '</div>'
+            st.markdown(reviews_html, unsafe_allow_html=True)
             
             st.divider()
             
@@ -778,12 +782,14 @@ if len(filtered) > 0:
             st.markdown("---")
             st.markdown("**📝 Top Trustworthy Reviews:**")
             
-            # Show top 3 reviews in compact format
-            st.markdown('<div style="max-height: 300px; overflow-y: auto; padding: 0.5rem;">', unsafe_allow_html=True)
+            # Show top 3 reviews in compact format - full text
+            reviews_html = '<div style="max-height: 350px; overflow-y: auto; padding: 0.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 8px;">'
             top_reviews = prod_reviews.nlargest(3, 'trust_score')
             for ridx, (_, rev) in enumerate(top_reviews.iterrows(), 1):
                 rev_class = get_trust_color(rev['trust_score'])
-                st.markdown(f"""
+                review_text = str(rev['review_text']).replace('<', '&lt;').replace('>', '&gt;')
+                
+                reviews_html += f"""
                 <div style='background: #f8fafc; padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem; font-size: 0.85rem;'>
                     <div style='margin-bottom: 0.5rem;'>
                         <span style='font-size: 0.9em; color: #f59e0b;'>{'⭐' * int(rev['rating'])}</span>
@@ -791,11 +797,12 @@ if len(filtered) > 0:
                         <span style='color: #64748b; margin-left: 0.5rem; font-size: 0.75rem;'>{'✅ Verified' if rev['verified'] else '❌'}</span>
                     </div>
                     <div style='color: #475569; line-height: 1.5;'>
-                        {rev['review_text'][:200]}{'...' if len(rev['review_text']) > 200 else ''}
+                        {review_text}
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+                """
+            reviews_html += '</div>'
+            st.markdown(reviews_html, unsafe_allow_html=True)
 else:
     st.warning("⚠️ No products match your criteria. Try lowering the filters.")
 
