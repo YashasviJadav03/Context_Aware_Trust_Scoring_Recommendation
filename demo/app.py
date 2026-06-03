@@ -647,17 +647,79 @@ if search_input:
             
             st.divider()
             
-            # Display reviews in scrollable container using HTML
-            reviews_html = '<div class="reviews-scroll-container">'
+            # Display reviews in scrollable container using st.components
+            import streamlit.components.v1 as components
+            
+            reviews_html = """
+            <style>
+                .reviews-scroll-container {
+                    max-height: 600px;
+                    overflow-y: auto;
+                    padding: 1rem;
+                    background: white;
+                    border-radius: 10px;
+                    border: 1px solid #e2e8f0;
+                    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+                }
+                
+                .reviews-scroll-container::-webkit-scrollbar {
+                    width: 8px;
+                }
+                
+                .reviews-scroll-container::-webkit-scrollbar-track {
+                    background: #f1f5f9;
+                    border-radius: 4px;
+                }
+                
+                .reviews-scroll-container::-webkit-scrollbar-thumb {
+                    background: #cbd5e1;
+                    border-radius: 4px;
+                }
+                
+                .reviews-scroll-container::-webkit-scrollbar-thumb:hover {
+                    background: #94a3b8;
+                }
+                
+                .review-card {
+                    background: #f8fafc;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    margin-bottom: 0.75rem;
+                    border-left: 3px solid #cbd5e1;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+                    font-size: 0.85rem;
+                }
+                
+                .review-card.high-trust {
+                    border-left-color: #059669;
+                    background: #f0fdf4;
+                }
+                
+                .review-card.medium-trust {
+                    border-left-color: #d97706;
+                    background: #fffbeb;
+                }
+                
+                .review-card.low-trust {
+                    border-left-color: #dc2626;
+                    background: #fef2f2;
+                }
+                
+                .trust-high { color: #059669; font-weight: 700; }
+                .trust-medium { color: #d97706; font-weight: 700; }
+                .trust-low { color: #dc2626; font-weight: 700; }
+            </style>
+            <div class="reviews-scroll-container">
+            """
             
             for idx, (_, review) in enumerate(page_reviews.iterrows(), start=start_idx + 1):
                 review_trust_class = get_trust_color(review['trust_score'])
                 trust_level = 'high-trust' if review['trust_score'] >= 0.7 else 'medium-trust' if review['trust_score'] >= 0.4 else 'low-trust'
                 
                 # Escape any HTML in review text
-                review_text = str(review['review_text']).replace('<', '&lt;').replace('>', '&gt;')
+                review_text = str(review['review_text']).replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
                 
-                # Review card - compact version with full text
+                # Review card
                 reviews_html += f"""
                 <div class='review-card {trust_level}'>
                     <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;'>
@@ -676,7 +738,7 @@ if search_input:
                 """
             
             reviews_html += '</div>'
-            st.markdown(reviews_html, unsafe_allow_html=True)
+            components.html(reviews_html, height=620, scrolling=False)
             
             st.divider()
             
@@ -782,15 +844,51 @@ if len(filtered) > 0:
             st.markdown("---")
             st.markdown("**📝 Top Trustworthy Reviews:**")
             
-            # Show top 3 reviews in compact format - full text
-            reviews_html = '<div style="max-height: 350px; overflow-y: auto; padding: 0.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 8px;">'
+            # Show top 3 reviews in compact format - full text using components
+            import streamlit.components.v1 as components
+            
+            reviews_html = """
+            <style>
+                .rec-reviews-container {
+                    max-height: 350px;
+                    overflow-y: auto;
+                    padding: 0.5rem;
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                }
+                .rec-reviews-container::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .rec-reviews-container::-webkit-scrollbar-track {
+                    background: #f1f5f9;
+                    border-radius: 3px;
+                }
+                .rec-reviews-container::-webkit-scrollbar-thumb {
+                    background: #cbd5e1;
+                    border-radius: 3px;
+                }
+                .rec-review-card {
+                    background: #f8fafc;
+                    padding: 0.75rem;
+                    border-radius: 6px;
+                    margin-bottom: 0.5rem;
+                    font-size: 0.85rem;
+                }
+                .trust-high { color: #059669; font-weight: 700; }
+                .trust-medium { color: #d97706; font-weight: 700; }
+                .trust-low { color: #dc2626; font-weight: 700; }
+            </style>
+            <div class="rec-reviews-container">
+            """
+            
             top_reviews = prod_reviews.nlargest(3, 'trust_score')
             for ridx, (_, rev) in enumerate(top_reviews.iterrows(), 1):
                 rev_class = get_trust_color(rev['trust_score'])
-                review_text = str(rev['review_text']).replace('<', '&lt;').replace('>', '&gt;')
+                review_text = str(rev['review_text']).replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
                 
                 reviews_html += f"""
-                <div style='background: #f8fafc; padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem; font-size: 0.85rem;'>
+                <div class='rec-review-card'>
                     <div style='margin-bottom: 0.5rem;'>
                         <span style='font-size: 0.9em; color: #f59e0b;'>{'⭐' * int(rev['rating'])}</span>
                         <span class='{rev_class}' style='font-size: 0.8em; margin-left: 0.5rem;'>Trust: {rev['trust_score']:.3f}</span>
@@ -801,8 +899,9 @@ if len(filtered) > 0:
                     </div>
                 </div>
                 """
+            
             reviews_html += '</div>'
-            st.markdown(reviews_html, unsafe_allow_html=True)
+            components.html(reviews_html, height=370, scrolling=False)
 else:
     st.warning("⚠️ No products match your criteria. Try lowering the filters.")
 
