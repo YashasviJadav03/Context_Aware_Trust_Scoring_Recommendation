@@ -40,16 +40,93 @@ def load_models():
         st.error(f"Error loading models: {e}")
         return None, None, None
 
+@st.cache_resource
+def get_db_connection():
+    """Get database connection"""
+    import sqlite3
+    import os
+    
+    db_path = 'data/processed/reviews.db'
+    
+    # Check if database exists and has data
+    if os.path.exists(db_path):
+        try:
+            conn = sqlite3.connect(db_path, check_same_thread=False)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = cursor.fetchall()
+            if tables:
+                return conn
+        except:
+            pass
+    
+    # If database doesn't exist or is empty, return None
+    return None
+
 @st.cache_data
 def load_data():
+    """Load products metadata"""
     try:
-        reviews = pd.read_csv("data/processed/reviews_sample.csv")
-        products = pd.read_csv("data/processed/product_trust_scores.csv")
+        conn = get_db_connection()
         
-        return reviews, products
+        if conn:
+            # Use database if available
+            products = pd.read_sql("SELECT * FROM products", conn)
+            return products
+        else:
+            # Fallback to CSV
+            products = pd.read_csv("data/processed/product_trust_scores.csv")
+            return products
     except Exception as e:
-        st.error(f"Error loading data: {e}")
-        st.stop()
+        # Final fallback to CSV
+        try:
+            products = pd.read_csv("data/processed/product_trust_scores.csv")
+            return products
+        except:
+            st.error(f"Error loading data: {e}")
+            st.stop()
+
+@st.cache_data
+def load_product_reviews(product_id):
+    """Load all reviews for a specific product - FAST with indexed database"""
+    try:
+        conn = get_db_connection()
+        
+        if conn:
+            # Use database if available
+            query = "SELECT * FROM reviews WHERE product_id = ?"
+            reviews = pd.read_sql(query, conn, params=(product_id,))
+            if len(reviews) > 0:
+                return reviews
+        
+        # Fallback to sample CSV
+        reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
+        return reviews_sample[reviews_sample['product_id'] == product_id]
+        
+    except Exception as e:
+        # Fallback to sample CSV
+        reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
+        return reviews_sample[reviews_sample['product_id'] == product_id]
+
+@st.cache_data
+def load_sample_reviews(limit=10000):
+    """Load sample reviews for recommendations display"""
+    try:
+        conn = get_db_connection()
+        
+        if conn:
+            # Use database if available
+            query = "SELECT * FROM reviews ORDER BY RANDOM() LIMIT ?"
+            reviews = pd.read_sql(query, conn, params=(limit,))
+            if len(reviews) > 0:
+                return reviews
+        
+        # Fallback to sample CSV
+        return pd.read_csv("data/processed/reviews_sample.csv")
+        
+    except Exception as e:
+        # Fallback to sample CSV
+        return pd.read_csv("data/processed/reviews_sample.csv")
 
 def get_trust_color(score):
     if score >= 0.7: return "trust-high"
@@ -79,10 +156,18 @@ def extract_features(text, rating, verified):
 
 # Load everything
 tfidf_vec, scaler, model = load_models()
-reviews_df, products_df = load_data()
+products_df = load_data()
+reviews_df = load_sample_reviews(10000)  # Sample for recommendations
 
-if reviews_df is None or products_df is None:
-    st.error("Failed to load data. Please check data files exist.")
+# Check if using database or fallback
+conn = get_db_connection()
+if conn:
+    st.sidebar.success("✅ Using full database (883K reviews)")
+else:
+    st.sidebar.info("ℹ️ Using sample data (10K reviews)")
+
+if products_df is None or len(products_df) == 0:
+    st.error("Failed to load data. Please check database exists.")
     st.stop()
 
 # ============================================================================
@@ -143,7 +228,10 @@ if search_input:
         
         # Get selected product data
         product = products_df[products_df['product_id'] == selected_product_id].iloc[0]
-        product_reviews = reviews_df[reviews_df['product_id'] == selected_product_id]
+        
+        # Load ALL reviews for this specific product
+        with st.spinner(f"Loading all reviews for {selected_product_id}..."):
+            product_reviews = load_product_reviews(selected_product_id)
         
         st.markdown(f"### Product: **{selected_product_id}**")
         
@@ -160,8 +248,7 @@ if search_input:
             st.progress(product['avg_rating'] / 5.0)
         
         with col3:
-            st.metric("Total Reviews", f"{int(product['review_count'])} total")
-            st.caption(f"{len(product_reviews)} in sample")
+            st.metric("Total Reviews", int(product['review_count']))
         
         with col4:
             verified_pct = (product_reviews['verified'].sum() / len(product_reviews)) * 100
@@ -204,58 +291,138 @@ if search_input:
         st.divider()
         
         # All reviews section
-        st.markdown("### 📝 All Reviews")
+        st.markdown("### 📝 Customer Reviews")
         
-        # Sorting options
-        col1, col2, col3 = st.columns(3)
+        # Review controls
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             sort_by = st.selectbox(
                 "Sort by",
-                ["Trust Score (High to Low)", "Trust Score (Low to High)", "Rating (High to Low)", "Rating (Low to High)", "Most Recent"]
+                ["Most Helpful (Trust)", "Highest Rating", "Lowest Rating", "Most Recent"],
+                key="sort_select"
             )
         
         with col2:
-            filter_verified = st.checkbox("Verified Only", value=False)
+            filter_verified = st.checkbox("✅ Verified Only", value=False, key="verified_check")
         
         with col3:
-            min_trust_review = st.slider("Min Trust Score", 0.0, 1.0, 0.0, 0.05, key="review_trust")
+            filter_rating = st.selectbox(
+                "Filter by Rating",
+                ["All Ratings", "5 Stars", "4 Stars", "3 Stars", "2 Stars", "1 Star"],
+                key="rating_filter"
+            )
         
-        # Apply filters and sorting
-        filtered_reviews = product_reviews[product_reviews['trust_score'] >= min_trust_review]
+        with col4:
+            reviews_per_page = st.selectbox(
+                "Show",
+                [10, 25, 50, 100],
+                index=1,
+                key="per_page"
+            )
+        
+        # Apply filters
+        filtered_reviews = product_reviews.copy()
         
         if filter_verified:
             filtered_reviews = filtered_reviews[filtered_reviews['verified'] == True]
         
+        if filter_rating != "All Ratings":
+            rating_map = {"5 Stars": 5, "4 Stars": 4, "3 Stars": 3, "2 Stars": 2, "1 Star": 1}
+            filtered_reviews = filtered_reviews[filtered_reviews['rating'] == rating_map[filter_rating]]
+        
         # Sort
-        if sort_by == "Trust Score (High to Low)":
+        if sort_by == "Most Helpful (Trust)":
             filtered_reviews = filtered_reviews.sort_values('trust_score', ascending=False)
-        elif sort_by == "Trust Score (Low to High)":
-            filtered_reviews = filtered_reviews.sort_values('trust_score', ascending=True)
-        elif sort_by == "Rating (High to Low)":
-            filtered_reviews = filtered_reviews.sort_values('rating', ascending=False)
-        elif sort_by == "Rating (Low to High)":
-            filtered_reviews = filtered_reviews.sort_values('rating', ascending=True)
+        elif sort_by == "Highest Rating":
+            filtered_reviews = filtered_reviews.sort_values(['rating', 'trust_score'], ascending=[False, False])
+        elif sort_by == "Lowest Rating":
+            filtered_reviews = filtered_reviews.sort_values(['rating', 'trust_score'], ascending=[True, False])
         
-        st.info(f"Showing **{len(filtered_reviews)}** of **{len(product_reviews)}** reviews in sample (product has {int(product['review_count'])} total reviews)")
+        # Pagination
+        total_reviews = len(filtered_reviews)
+        total_pages = (total_reviews + reviews_per_page - 1) // reviews_per_page
         
-        # Display reviews
-        for idx, (_, review) in enumerate(filtered_reviews.iterrows(), 1):
-            review_trust_class = get_trust_color(review['trust_score'])
+        if total_pages > 0:
+            # Initialize page number in session state
+            if 'page_number' not in st.session_state:
+                st.session_state.page_number = 1
             
-            with st.container():
-                col1, col2 = st.columns([4, 1])
+            # Pagination controls at top
+            col1, col2, col3 = st.columns([1, 2, 1])
+            
+            with col1:
+                if st.button("⬅️ Previous", disabled=st.session_state.page_number <= 1, key="prev_top"):
+                    st.session_state.page_number -= 1
+                    st.rerun()
+            
+            with col2:
+                st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.page_number} of {total_pages} ({total_reviews} reviews)</div>", unsafe_allow_html=True)
+            
+            with col3:
+                if st.button("Next ➡️", disabled=st.session_state.page_number >= total_pages, key="next_top"):
+                    st.session_state.page_number += 1
+                    st.rerun()
+            
+            # Get current page reviews
+            start_idx = (st.session_state.page_number - 1) * reviews_per_page
+            end_idx = start_idx + reviews_per_page
+            page_reviews = filtered_reviews.iloc[start_idx:end_idx]
+            
+            st.divider()
+            
+            # Display reviews in scrollable container
+            for idx, (_, review) in enumerate(page_reviews.iterrows(), start=start_idx + 1):
+                review_trust_class = get_trust_color(review['trust_score'])
                 
-                with col1:
-                    st.markdown(f"**Review #{idx}**")
-                    st.write(review['review_text'])
-                
-                with col2:
-                    st.markdown(f"<span class='{review_trust_class}'>Trust: {review['trust_score']:.3f}</span>", unsafe_allow_html=True)
-                    st.write(f"{'⭐' * int(review['rating'])}")
-                    st.write(f"{'✅ Verified' if review['verified'] else '❌ Not Verified'}")
-                
-                st.divider()
+                # Review card
+                st.markdown(f"""
+                <div style='background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid {"#27ae60" if review["trust_score"] >= 0.7 else "#f39c12" if review["trust_score"] >= 0.4 else "#e74c3c"};'>
+                    <div style='display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;'>
+                        <div>
+                            <span style='font-size: 1.2em; color: #f39c12;'>{'⭐' * int(review['rating'])}</span>
+                            <span style='color: #7f8c8d; margin-left: 0.5rem;'>{'✅ Verified Purchase' if review['verified'] else '❌ Unverified'}</span>
+                        </div>
+                        <div>
+                            <span class='{review_trust_class}' style='font-size: 0.9em;'>Trust: {review['trust_score']:.3f}</span>
+                        </div>
+                    </div>
+                    <div style='color: #2c3e50; line-height: 1.6;'>
+                        {review['review_text']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.divider()
+            
+            # Pagination controls at bottom
+            col1, col2, col3 = st.columns([1, 2, 1])
+            
+            with col1:
+                if st.button("⬅️ Previous", disabled=st.session_state.page_number <= 1, key="prev_bottom"):
+                    st.session_state.page_number -= 1
+                    st.rerun()
+            
+            with col2:
+                # Page selector
+                page_options = list(range(1, total_pages + 1))
+                new_page = st.selectbox(
+                    "Go to page:",
+                    page_options,
+                    index=st.session_state.page_number - 1,
+                    key="page_select"
+                )
+                if new_page != st.session_state.page_number:
+                    st.session_state.page_number = new_page
+                    st.rerun()
+            
+            with col3:
+                if st.button("Next ➡️", disabled=st.session_state.page_number >= total_pages, key="next_bottom"):
+                    st.session_state.page_number += 1
+                    st.rerun()
+        
+        else:
+            st.warning("No reviews match your filters. Try adjusting the filters above.")
     
     else:
         st.warning(f"⚠️ No products found matching '{search_input}'. Try a different Product ID.")
