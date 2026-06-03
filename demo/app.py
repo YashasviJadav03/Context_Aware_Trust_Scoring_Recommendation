@@ -111,6 +111,155 @@ st.info("💡 **Model Accuracy**: R² = 0.847 means the model explains 84.7% of 
 st.divider()
 
 # ============================================================================
+# PRODUCT SEARCH & ANALYSIS
+# ============================================================================
+
+st.subheader("🔎 Search & Analyze Specific Product")
+
+# Search input
+search_input = st.text_input(
+    "Search by Product ID",
+    placeholder="e.g., B00008JPRZ",
+    help="Enter a product ID to see detailed analysis"
+)
+
+if search_input:
+    # Search for products matching the input
+    search_results = products_df[products_df['product_id'].str.contains(search_input, case=False, na=False)]
+    
+    if len(search_results) > 0:
+        st.success(f"✅ Found {len(search_results)} product(s) matching '{search_input}'")
+        
+        # If multiple results, show selection
+        if len(search_results) > 1:
+            selected_product_id = st.selectbox(
+                "Select a product to analyze:",
+                search_results['product_id'].tolist()
+            )
+        else:
+            selected_product_id = search_results['product_id'].iloc[0]
+        
+        # Get selected product data
+        product = products_df[products_df['product_id'] == selected_product_id].iloc[0]
+        product_reviews = reviews_df[reviews_df['product_id'] == selected_product_id]
+        
+        st.markdown(f"### Product: **{selected_product_id}**")
+        
+        # Product overview metrics
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            trust_class = get_trust_color(product['score_trust_weighted'])
+            st.markdown(f"**Trust Score**")
+            st.markdown(f"<span class='{trust_class}' style='font-size: 2em;'>{product['score_trust_weighted']:.3f}</span>", unsafe_allow_html=True)
+        
+        with col2:
+            st.metric("Avg Rating", f"{product['avg_rating']:.2f}/5.0")
+            st.progress(product['avg_rating'] / 5.0)
+        
+        with col3:
+            st.metric("Total Reviews", int(product['review_count']))
+        
+        with col4:
+            verified_pct = (product_reviews['verified'].sum() / len(product_reviews)) * 100
+            st.metric("Verified", f"{verified_pct:.0f}%")
+        
+        with col5:
+            rating_consistency = 5 - product['rating_std']
+            st.metric("Consistency", f"{rating_consistency:.1f}/5.0")
+        
+        st.divider()
+        
+        # Review statistics
+        st.markdown("### 📊 Review Statistics")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Trust score distribution
+            st.markdown("**Trust Score Distribution**")
+            trust_bins = pd.cut(product_reviews['trust_score'], bins=[0, 0.4, 0.7, 1.0], labels=['Low', 'Medium', 'High'])
+            trust_counts = trust_bins.value_counts()
+            
+            for level in ['High', 'Medium', 'Low']:
+                if level in trust_counts.index:
+                    count = trust_counts[level]
+                    pct = (count / len(product_reviews)) * 100
+                    st.write(f"🟢 {level}: {count} ({pct:.0f}%)" if level == 'High' else 
+                            f"🟡 {level}: {count} ({pct:.0f}%)" if level == 'Medium' else 
+                            f"🔴 {level}: {count} ({pct:.0f}%)")
+        
+        with col2:
+            # Rating distribution
+            st.markdown("**Rating Distribution**")
+            rating_counts = product_reviews['rating'].value_counts().sort_index(ascending=False)
+            for rating in [5, 4, 3, 2, 1]:
+                count = rating_counts.get(rating, 0)
+                pct = (count / len(product_reviews)) * 100
+                st.write(f"{'⭐' * rating}: {count} ({pct:.0f}%)")
+        
+        st.divider()
+        
+        # All reviews section
+        st.markdown("### 📝 All Reviews")
+        
+        # Sorting options
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            sort_by = st.selectbox(
+                "Sort by",
+                ["Trust Score (High to Low)", "Trust Score (Low to High)", "Rating (High to Low)", "Rating (Low to High)", "Most Recent"]
+            )
+        
+        with col2:
+            filter_verified = st.checkbox("Verified Only", value=False)
+        
+        with col3:
+            min_trust_review = st.slider("Min Trust Score", 0.0, 1.0, 0.0, 0.05, key="review_trust")
+        
+        # Apply filters and sorting
+        filtered_reviews = product_reviews[product_reviews['trust_score'] >= min_trust_review]
+        
+        if filter_verified:
+            filtered_reviews = filtered_reviews[filtered_reviews['verified'] == True]
+        
+        # Sort
+        if sort_by == "Trust Score (High to Low)":
+            filtered_reviews = filtered_reviews.sort_values('trust_score', ascending=False)
+        elif sort_by == "Trust Score (Low to High)":
+            filtered_reviews = filtered_reviews.sort_values('trust_score', ascending=True)
+        elif sort_by == "Rating (High to Low)":
+            filtered_reviews = filtered_reviews.sort_values('rating', ascending=False)
+        elif sort_by == "Rating (Low to High)":
+            filtered_reviews = filtered_reviews.sort_values('rating', ascending=True)
+        
+        st.info(f"Showing **{len(filtered_reviews)}** of **{len(product_reviews)}** reviews")
+        
+        # Display reviews
+        for idx, (_, review) in enumerate(filtered_reviews.iterrows(), 1):
+            review_trust_class = get_trust_color(review['trust_score'])
+            
+            with st.container():
+                col1, col2 = st.columns([4, 1])
+                
+                with col1:
+                    st.markdown(f"**Review #{idx}**")
+                    st.write(review['review_text'])
+                
+                with col2:
+                    st.markdown(f"<span class='{review_trust_class}'>Trust: {review['trust_score']:.3f}</span>", unsafe_allow_html=True)
+                    st.write(f"{'⭐' * int(review['rating'])}")
+                    st.write(f"{'✅ Verified' if review['verified'] else '❌ Not Verified'}")
+                
+                st.divider()
+    
+    else:
+        st.warning(f"⚠️ No products found matching '{search_input}'. Try a different Product ID.")
+
+st.divider()
+
+# ============================================================================
 # RECOMMENDATIONS
 # ============================================================================
 
