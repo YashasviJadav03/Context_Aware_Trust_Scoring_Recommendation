@@ -46,11 +46,6 @@ def load_data():
         reviews = pd.read_csv("data/processed/reviews_sample.csv")
         products = pd.read_csv("data/processed/product_trust_scores.csv")
         
-        # Add review counts
-        review_counts = reviews.groupby('product_id').size().reset_index(name='review_count')
-        products = products.merge(review_counts, on='product_id', how='left')
-        products['review_count'] = products['review_count'].fillna(0).astype(int)
-        
         return reviews, products
     except Exception as e:
         st.error(f"Error loading data: {e}")
