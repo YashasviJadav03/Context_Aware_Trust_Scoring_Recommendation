@@ -597,6 +597,12 @@ if search_input:
                 key="per_page"
             )
         
+        # Reset page to 1 when filters/sort change
+        filter_key = f"{sort_by}_{filter_verified}_{filter_rating}_{reviews_per_page}"
+        if 'last_filter_key' not in st.session_state or st.session_state['last_filter_key'] != filter_key:
+            st.session_state.page_number = 1
+            st.session_state['last_filter_key'] = filter_key
+        
         # Apply filters
         filtered_reviews = product_reviews.copy()
         
@@ -614,6 +620,12 @@ if search_input:
             filtered_reviews = filtered_reviews.sort_values(['rating', 'trust_score'], ascending=[False, False])
         elif sort_by == "Lowest Rating":
             filtered_reviews = filtered_reviews.sort_values(['rating', 'trust_score'], ascending=[True, False])
+        elif sort_by == "Most Recent":
+            # If timestamp column exists, sort by it, otherwise keep current order
+            if 'timestamp' in filtered_reviews.columns:
+                filtered_reviews = filtered_reviews.sort_values('timestamp', ascending=False)
+            elif 'created_at' in filtered_reviews.columns:
+                filtered_reviews = filtered_reviews.sort_values('created_at', ascending=False)
         
         # Pagination
         total_reviews = len(filtered_reviews)
