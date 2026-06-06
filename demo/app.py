@@ -740,7 +740,7 @@ if search_input:
                             <span style='color: #64748b; margin-left: 0.5rem; font-size: 0.75rem; font-weight: 600;'>{'✅ Verified' if review['verified'] else '❌ Unverified'}</span>
                         </div>
                         <div>
-                            <span class='{review_trust_class}' style='font-size: 0.8em;'>Trust: {review['trust_score']:.3f}</span>
+                            <span class='{review_trust_class}' style='font-size: 0.8em;'>Trust: {review['trust_score']:.4f}</span>
                         </div>
                     </div>
                     <div style='color: #334155; line-height: 1.5; font-size: 0.85rem;'>
@@ -903,7 +903,7 @@ if len(filtered) > 0:
                 <div class='rec-review-card'>
                     <div style='margin-bottom: 0.5rem;'>
                         <span style='font-size: 0.9em; color: #f59e0b;'>{'⭐' * int(rev['rating'])}</span>
-                        <span class='{rev_class}' style='font-size: 0.8em; margin-left: 0.5rem;'>Trust: {rev['trust_score']:.3f}</span>
+                        <span class='{rev_class}' style='font-size: 0.8em; margin-left: 0.5rem;'>Trust: {rev['trust_score']:.4f}</span>
                         <span style='color: #64748b; margin-left: 0.5rem; font-size: 0.75rem;'>{'✅ Verified' if rev['verified'] else '❌'}</span>
                     </div>
                     <div style='color: #475569; line-height: 1.5;'>
