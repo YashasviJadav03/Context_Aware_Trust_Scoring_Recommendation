@@ -258,7 +258,7 @@ def get_db_connection():
     # If database doesn't exist or is empty, return None
     return None
 
-@st.cache_data
+@st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_data():
     """Load products metadata"""
     try:
@@ -281,7 +281,7 @@ def load_data():
             st.error(f"Error loading data: {e}")
             st.stop()
 
-@st.cache_data
+@st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_product_reviews(product_id):
     """Load all reviews for a specific product - FAST with indexed database"""
     try:
@@ -303,7 +303,7 @@ def load_product_reviews(product_id):
         reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
         return reviews_sample[reviews_sample['product_id'] == product_id]
 
-@st.cache_data
+@st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_sample_reviews(limit=10000):
     """Load sample reviews for recommendations display"""
     try:
@@ -367,6 +367,11 @@ if conn:
     st.sidebar.success("✅ Using full database (883K reviews)")
 else:
     st.sidebar.info("ℹ️ Using sample data (10K reviews)")
+
+# Add cache clear button
+if st.sidebar.button("🔄 Clear Cache & Refresh Data"):
+    st.cache_data.clear()
+    st.rerun()
 
 if products_df is None or len(products_df) == 0:
     st.error("Failed to load data. Please check database exists.")
