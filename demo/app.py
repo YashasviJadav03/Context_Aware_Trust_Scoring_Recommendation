@@ -292,14 +292,23 @@ def load_product_reviews(product_id):
             query = "SELECT * FROM reviews WHERE product_id = ?"
             reviews = pd.read_sql(query, conn, params=(product_id,))
             if len(reviews) > 0:
+                # DEBUG: Log trust score range
+                st.sidebar.write(f"DEBUG: Loaded {len(reviews)} reviews from DB")
+                st.sidebar.write(f"Trust range: {reviews['trust_score'].min():.3f} - {reviews['trust_score'].max():.3f}")
                 return reviews
         
         # Fallback to sample CSV
         reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
-        return reviews_sample[reviews_sample['product_id'] == product_id]
+        filtered = reviews_sample[reviews_sample['product_id'] == product_id]
+        # DEBUG: Log trust score range from CSV
+        if len(filtered) > 0:
+            st.sidebar.write(f"DEBUG: Loaded {len(filtered)} reviews from CSV")
+            st.sidebar.write(f"Trust range: {filtered['trust_score'].min():.3f} - {filtered['trust_score'].max():.3f}")
+        return filtered
         
     except Exception as e:
         # Fallback to sample CSV
+        st.sidebar.error(f"DEBUG ERROR: {str(e)}")
         reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
         return reviews_sample[reviews_sample['product_id'] == product_id]
 
