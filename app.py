@@ -260,26 +260,56 @@ def get_db_connection():
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_data():
-    """Load products metadata"""
+    """Load products with names and images from metadata."""
+    import os
+
+    metadata_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "product_metadata.csv"
+    )
+    if not os.path.exists(metadata_path):
+        metadata_path = "demo/product_metadata.csv"
+
     try:
         conn = get_db_connection()
-        
+
         if conn:
-            # Use database if available
             products = pd.read_sql("SELECT * FROM products", conn)
-            return products
         else:
-            # Fallback to CSV
             products = pd.read_csv("data/processed/product_trust_scores.csv")
-            return products
     except Exception as e:
-        # Final fallback to CSV
         try:
             products = pd.read_csv("data/processed/product_trust_scores.csv")
-            return products
-        except:
+        except Exception:
             st.error(f"Error loading data: {e}")
             st.stop()
+
+    if os.path.exists(metadata_path):
+        metadata = pd.read_csv(metadata_path).drop_duplicates(
+            subset="product_id", keep="first"
+        )
+        overlap_cols = [
+            c for c in metadata.columns if c != "product_id" and c in products.columns
+        ]
+        if overlap_cols:
+            products = products.drop(columns=overlap_cols)
+        products = products.merge(metadata, on="product_id", how="left")
+
+    return products
+
+def search_products(products_df, query):
+    """Search products by name, brand, category, or product ID."""
+    if not query:
+        return products_df.iloc[0:0]
+
+    mask = products_df["product_id"].str.contains(query, case=False, na=False)
+    if "product_name" in products_df.columns:
+        mask = mask | products_df["product_name"].str.contains(query, case=False, na=False)
+    if "brand" in products_df.columns:
+        mask = mask | products_df["brand"].str.contains(query, case=False, na=False)
+    if "category" in products_df.columns:
+        mask = mask | products_df["category"].str.contains(query, case=False, na=False)
+
+    return products_df[mask]
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_product_reviews(product_id):
@@ -416,41 +446,15 @@ st.divider()
 
 st.markdown('<p class="section-header">🔎 Product Search & Analysis</p>', unsafe_allow_html=True)
 
-# Check if product_name column exists
-has_product_names = 'product_name' in products_df.columns
-
-# Search input with toggle for search type
-col1, col2 = st.columns([3, 1])
-with col1:
-    if has_product_names:
-        search_input = st.text_input(
-            "Search Products",
-            placeholder="e.g., 'tungsten ring' or 'B00008JPRZ'",
-            help="Search by product name or ID"
-        )
-    else:
-        search_input = st.text_input(
-            "Search Products by ID",
-            placeholder="e.g., B00008JPRZ",
-            help="Enter a product ID to see detailed analysis"
-        )
-with col2:
-    if has_product_names:
-        search_type = st.radio(
-            "Search by",
-            ["Name", "ID"],
-            horizontal=True
-        )
-    else:
-        st.info("🔍 ID Search Only")
-        search_type = "ID"
+# Search input — matches name, brand, category, or product ID
+search_input = st.text_input(
+    "Search Products",
+    placeholder="e.g., 'leather jacket', 'Nike', or B00008JPRZ",
+    help="Search by product name, brand, category, or product ID",
+)
 
 if search_input:
-    # Search for products matching the input
-    if search_type == "Name":
-        search_results = products_df[products_df['product_name'].str.contains(search_input, case=False, na=False)]
-    else:
-        search_results = products_df[products_df['product_id'].str.contains(search_input, case=False, na=False)]
+    search_results = search_products(products_df, search_input)
     
     if len(search_results) > 0:
         st.success(f"✅ Found {len(search_results)} product(s) matching '{search_input}'")
