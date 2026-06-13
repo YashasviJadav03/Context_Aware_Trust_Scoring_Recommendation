@@ -4,7 +4,7 @@ A machine learning system for detecting fake reviews and improving product ranki
 
 **Project Status:** Production Ready  
 **Performance:** Precision@10: 100% (+25% vs baseline) | Spearman: 0.93 | R²: 0.84  
-**Live Demo:** [https://context-aware-trust-scoring-recommendation.streamlit.app](https://context-aware-trust-scoring-recommendation.streamlit.app)
+**Live Demo:** [https://trust-scoring-system.streamlit.app/](https://trust-scoring-system.streamlit.app/)
 
 ---
 
