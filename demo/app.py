@@ -281,7 +281,7 @@ def load_data():
             st.error(f"Error loading data: {e}")
             st.stop()
 
-@st.cache_data(ttl=60)  # Reduce cache to 1 minute for debugging
+@st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_product_reviews(product_id):
     """Load all reviews for a specific product - FAST with indexed database"""
     try:
@@ -292,25 +292,14 @@ def load_product_reviews(product_id):
             query = "SELECT * FROM reviews WHERE product_id = ?"
             reviews = pd.read_sql(query, conn, params=(product_id,))
             if len(reviews) > 0:
-                # DEBUG: Show trust score info prominently
-                st.info(f"🔍 DEBUG: Loaded {len(reviews)} reviews from DATABASE | Trust scores: {reviews['trust_score'].min():.4f} to {reviews['trust_score'].max():.4f}")
                 return reviews
         
         # Fallback to sample CSV
-        st.warning("⚠️ DEBUG: Database not available, using CSV fallback")
         reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
-        filtered = reviews_sample[reviews_sample['product_id'] == product_id]
-        
-        if len(filtered) > 0:
-            st.info(f"🔍 DEBUG: Loaded {len(filtered)} reviews from CSV | Trust scores: {filtered['trust_score'].min():.4f} to {filtered['trust_score'].max():.4f}")
-        else:
-            st.error(f"❌ DEBUG: No reviews found for product {product_id} in CSV")
-        
-        return filtered
+        return reviews_sample[reviews_sample['product_id'] == product_id]
         
     except Exception as e:
         # Fallback to sample CSV
-        st.error(f"❌ DEBUG ERROR: {str(e)}")
         reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
         return reviews_sample[reviews_sample['product_id'] == product_id]
 
@@ -378,11 +367,6 @@ if conn:
     st.sidebar.success("✅ Using full database (883K reviews)")
 else:
     st.sidebar.info("ℹ️ Using sample data (10K reviews)")
-
-# Add cache clear button for debugging
-if st.sidebar.button("🔄 Clear Cache & Refresh"):
-    st.cache_data.clear()
-    st.rerun()
 
 # Add cache clear button
 if st.sidebar.button("🔄 Clear Cache & Refresh Data"):
