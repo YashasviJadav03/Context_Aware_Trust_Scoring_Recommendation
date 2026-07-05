@@ -311,7 +311,7 @@ def search_products(products_df, query):
 
     return products_df[mask]
 
-@st.cache_data(ttl=3600)  # Cache for 1 hour
+@st.cache_data(show_spinner="Loading reviews...")
 def load_product_reviews(product_id):
     """Load all reviews for a specific product - FAST with indexed database"""
     try:
@@ -326,12 +326,17 @@ def load_product_reviews(product_id):
         
         # Fallback to sample CSV
         reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
-        return reviews_sample[reviews_sample['product_id'] == product_id]
+        filtered = reviews_sample[reviews_sample['product_id'] == product_id]
+        return filtered
         
     except Exception as e:
-        # Fallback to sample CSV
-        reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
-        return reviews_sample[reviews_sample['product_id'] == product_id]
+        # Final fallback to sample CSV
+        try:
+            reviews_sample = pd.read_csv("data/processed/reviews_sample.csv")
+            return reviews_sample[reviews_sample['product_id'] == product_id]
+        except:
+            # Return empty dataframe if all else fails
+            return pd.DataFrame()
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_sample_reviews(limit=10000):
@@ -397,6 +402,8 @@ if conn:
     st.sidebar.success("✅ Using full database (883K reviews)")
 else:
     st.sidebar.info("ℹ️ Using sample data (10K reviews)")
+
+st.sidebar.caption("v2.0.0 - Production")
 
 # Add cache clear button
 if st.sidebar.button("🔄 Clear Cache & Refresh Data"):
